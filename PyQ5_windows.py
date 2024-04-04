@@ -1,36 +1,25 @@
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtWidgets import QMessageBox, QLineEdit, QPushButton
 
 
 class Ui_LogInOrRegister(object):
-    def __init__(self, EnterCallBack):
-        self.EnterCallBack = EnterCallBack
 
+    def OpenLogInWindow(self, MainWindow, CallBackShowLogIn):
+        CallBackShowLogIn(MainWindow)
 
-    def OpenLogInWindow(self, MainWindow):
-        self.window = QtWidgets.QMainWindow()
-        self.ui = Ui_LogInWindow()
-        self.ui.setupUi(self.window)
-        self.window.show()
-        MainWindow.close()
+    def OpenRegistrtWindow(self, MainWindow, CallBackShowRegister):
+        CallBackShowRegister(MainWindow)
 
-    def OpenRegistrtWindow(self, MainWindow):
-        self.window = QtWidgets.QMainWindow()
-        self.ui = Ui_RegisterWindow()
-        self.ui.setupUi(self.window, self.EnterCallBack)
-        self.window.show()
-        MainWindow.close()
-
-    def setupUi(self, MainWindow):
+    def setupUi(self, MainWindow, CallBackShowRegister, CallBackShowLogIn):
         self.MainWindow = MainWindow
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(804, 609)
         MainWindow.setStyleSheet("background-color: rgb(236, 243, 244);")
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
-        self.LogInButton = QtWidgets.QPushButton(self.centralwidget, clicked= lambda: self.OpenLogInWindow(MainWindow))
+        self.LogInButton = QtWidgets.QPushButton(self.centralwidget, clicked= lambda: self.OpenLogInWindow(MainWindow, CallBackShowLogIn))
         self.LogInButton.setGeometry(QtCore.QRect(280, 300, 241, 91))
         font = QtGui.QFont()
         font.setPointSize(16)
@@ -46,7 +35,7 @@ class Ui_LogInOrRegister(object):
 "background-color: #4385F7;\n"
 "}")
         self.LogInButton.setObjectName("pushButton_2")
-        self.RegisterButton = QtWidgets.QPushButton(self.centralwidget, clicked= lambda: self.OpenRegistrtWindow(MainWindow))
+        self.RegisterButton = QtWidgets.QPushButton(self.centralwidget, clicked= lambda: self.OpenRegistrtWindow(MainWindow, CallBackShowRegister))
         self.RegisterButton.setGeometry(QtCore.QRect(280, 180, 241, 91))
         font = QtGui.QFont()
         font.setPointSize(16)
@@ -87,16 +76,23 @@ class Ui_LogInOrRegister(object):
         self.RegisterButton.setText(_translate("MainWindow", "Register"))
         self.label.setText(_translate("MainWindow", "Välkommen till python-projekt"))
 
+
 class Ui_LogInWindow(object):
+    def call_Enter(self, EnterCallBack):
+        self.result = EnterCallBack(self.Username, "", "", self.Password_LineEdit, "", "LogIn")
+        if self.result != "connection succeed":
+            msg_box = QMessageBox()
+            msg_box.setWindowTitle("Bomboclat")
+            msg_box.setText(self.result)
+            msg_box.exec_()
+        else:
+            # need to add what happens if successfully connected
+            pass
 
-    def OpenRegistrtWindow(self, MainWindow):
-        self.window = QtWidgets.QMainWindow()
-        self.ui = Ui_RegisterWindow()
-        self.ui.setupUi(self.window)
-        self.window.show()
-        MainWindow.close()
+    def OpenRegistrtWindow(self, MainWindow, CallBackShowRegister):
+        CallBackShowRegister(MainWindow)
 
-    def setupUi(self, MainWindow):
+    def setupUi(self, MainWindow, EnterCallBack, CallBackShowRegister):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(711, 620)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
@@ -108,7 +104,8 @@ class Ui_LogInWindow(object):
         self.label.setFont(font)
         self.label.setAlignment(QtCore.Qt.AlignCenter)
         self.label.setObjectName("label")
-        self.Enter = QtWidgets.QPushButton(self.centralwidget)
+        self.result = ""
+        self.Enter = QtWidgets.QPushButton(self.centralwidget, clicked=lambda: self.call_Enter(EnterCallBack))
         self.Enter.setGeometry(QtCore.QRect(260, 430, 191, 51))
         font = QtGui.QFont()
         font.setPointSize(12)
@@ -121,7 +118,7 @@ class Ui_LogInWindow(object):
 "}")
         self.Enter.setObjectName("pushButton")
         # Currently takes you back to the window when you pick either LogIn or Register
-        self.SwitchToRegister = QtWidgets.QPushButton(self.centralwidget, clicked=lambda: self.OpenRegistrtWindow(MainWindow))
+        self.SwitchToRegister = QtWidgets.QPushButton(self.centralwidget, clicked=lambda: self.OpenRegistrtWindow(MainWindow, CallBackShowRegister))
         self.SwitchToRegister.setGeometry(QtCore.QRect(260, 490, 191, 51))
         font = QtGui.QFont()
         font.setPointSize(12)
@@ -134,20 +131,30 @@ class Ui_LogInWindow(object):
 "}")
         self.SwitchToRegister.setObjectName("pushButton_2")
         self.groupBox = QtWidgets.QGroupBox(self.centralwidget)
-        self.groupBox.setGeometry(QtCore.QRect(200, 180, 331, 211))
+        self.groupBox.setGeometry(QtCore.QRect(200, 180, 331, 251))
         self.groupBox.setObjectName("groupBox")
-        self.lineEdit_2 = QtWidgets.QLineEdit(self.groupBox)
-        self.lineEdit_2.setGeometry(QtCore.QRect(20, 160, 261, 31))
-        self.lineEdit_2.setObjectName("lineEdit_2")
+        self.Password_LineEdit = QtWidgets.QLineEdit(self.groupBox)
+        self.Password_LineEdit.setGeometry(QtCore.QRect(20, 160, 261, 31))
+        self.Password_LineEdit.setObjectName("lineEdit_2")
+        self.Password_LineEdit.setEchoMode(QLineEdit.Password)
+        self.toggle_button = QPushButton(self.groupBox, clicked= lambda: self.toggle_visibility())
+        self.toggle_button.setGeometry(QtCore.QRect(20, 200, 100, 31))
+        self.toggle_button.setText("Show Password")
+        self.toggle_button.setStyleSheet("QPushButton{\n"
+                                            "    background-color: rgb(85, 170, 255);\n"
+                                            "}\n"
+                                            "QPushButton:hover{\n"
+                                            "    background-color: rgb(85, 85, 255);\n"
+                                            "}")
         self.label_3 = QtWidgets.QLabel(self.groupBox)
         self.label_3.setGeometry(QtCore.QRect(20, 140, 171, 16))
         font = QtGui.QFont()
         font.setPointSize(12)
         self.label_3.setFont(font)
         self.label_3.setObjectName("label_3")
-        self.lineEdit = QtWidgets.QLineEdit(self.groupBox)
-        self.lineEdit.setGeometry(QtCore.QRect(20, 70, 261, 31))
-        self.lineEdit.setObjectName("lineEdit")
+        self.Username = QtWidgets.QLineEdit(self.groupBox)
+        self.Username.setGeometry(QtCore.QRect(20, 70, 261, 31))
+        self.Username.setObjectName("lineEdit")
         self.label_2 = QtWidgets.QLabel(self.groupBox)
         self.label_2.setGeometry(QtCore.QRect(20, 50, 161, 16))
         font = QtGui.QFont()
@@ -166,6 +173,14 @@ class Ui_LogInWindow(object):
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
+    def toggle_visibility(self):
+        if self.Password_LineEdit.echoMode() == QLineEdit.Password:
+            self.Password_LineEdit.setEchoMode(QLineEdit.Normal)
+            self.toggle_button.setText("Hide Password")
+        else:
+            self.Password_LineEdit.setEchoMode(QLineEdit.Password)
+            self.toggle_button.setText("Show Password")
+
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "LogIn"))
@@ -183,17 +198,16 @@ class Ui_RegisterWindow(object):
         if self.result != "connection succeed":
             msg_box = QMessageBox()
             msg_box.setWindowTitle("Bomboclat")
-            msg_box.setText("You are a failure ")
+            msg_box.setText(self.result)
             msg_box.exec_()
+        else:
+            # need to add what happens if successfully connected
+            pass
 
-    def OpenLogInWindow(self, MainWindow):
-        self.window = QtWidgets.QMainWindow()
-        self.ui = Ui_LogInWindow()
-        self.ui.setupUi(self.window)
-        self.window.show()
-        MainWindow.close()
+    def OpenLogInWindow(self, MainWindow, CallBackShowLogIn):
+        CallBackShowLogIn(MainWindow)
 
-    def setupUi(self, MainWindow, EnterCallBack):
+    def setupUi(self, MainWindow, EnterCallBack, CallBackShowLogIn):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(1099, 845)
         MainWindow.setLayoutDirection(QtCore.Qt.LeftToRight)
@@ -220,7 +234,7 @@ class Ui_RegisterWindow(object):
 "}")
         self.Enter.setObjectName("Enter")
         # Currently takes you back to the window when you pick either LogIn or Register
-        self.SwitchToLogin = QtWidgets.QPushButton(self.centralwidget, clicked=lambda: self.OpenLogInWindow(MainWindow))
+        self.SwitchToLogin = QtWidgets.QPushButton(self.centralwidget, clicked=lambda: self.OpenLogInWindow(MainWindow, CallBackShowLogIn))
         self.SwitchToLogin.setGeometry(QtCore.QRect(470, 720, 191, 51))
         font = QtGui.QFont()
         font.setPointSize(12)
@@ -274,6 +288,7 @@ class Ui_RegisterWindow(object):
         self.Password_LineEdit = QtWidgets.QLineEdit(self.Password_box)
         self.Password_LineEdit.setGeometry(QtCore.QRect(10, 50, 241, 31))
         self.Password_LineEdit.setObjectName("Password_LineEdit")
+        self.Password_LineEdit.setEchoMode(QLineEdit.Password)
         self.label_4 = QtWidgets.QLabel(self.Password_box)
         self.label_4.setGeometry(QtCore.QRect(10, 120, 221, 16))
         font = QtGui.QFont()
@@ -283,6 +298,7 @@ class Ui_RegisterWindow(object):
         self.ConfirmPassword_LineEdit = QtWidgets.QLineEdit(self.Password_box)
         self.ConfirmPassword_LineEdit.setGeometry(QtCore.QRect(10, 140, 241, 31))
         self.ConfirmPassword_LineEdit.setObjectName("ConfirmPassword_LineEdit")
+        self.ConfirmPassword_LineEdit.setEchoMode(QLineEdit.Password)
         self.label_7 = QtWidgets.QLabel(self.centralwidget)
         self.label_7.setGeometry(QtCore.QRect(700, 440, 61, 41))
         self.label_7.setMaximumSize(QtCore.QSize(71, 16777215))
@@ -304,6 +320,15 @@ class Ui_RegisterWindow(object):
         self.label_8.setToolTip('Username must be longer then 5 characters')
         self.label_8.resize(self.label_8.sizeHint())
         self.label_8.move(700, 160)
+        self.toggle_button = QPushButton(self.Password_box, clicked= lambda: self.toggle_visibility())
+        self.toggle_button.setGeometry(QtCore.QRect(10, 180, 100, 31))
+        self.toggle_button.setText("Show Password")
+        self.toggle_button.setStyleSheet("QPushButton{\n"
+                                         "    background-color: rgb(85, 170, 255);\n"
+                                         "}\n"
+                                         "QPushButton:hover{\n"
+                                         "    background-color: rgb(85, 85, 255);\n"
+                                         "}")
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 1099, 21))
@@ -320,6 +345,16 @@ class Ui_RegisterWindow(object):
 
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
+
+    def toggle_visibility(self):
+        if self.ConfirmPassword_LineEdit.echoMode() == QLineEdit.Password:
+            self.ConfirmPassword_LineEdit.setEchoMode(QLineEdit.Normal)
+            self.Password_LineEdit.setEchoMode(QLineEdit.Normal)
+            self.toggle_button.setText("Hide Password")
+        else:
+            self.ConfirmPassword_LineEdit.setEchoMode(QLineEdit.Password)
+            self.Password_LineEdit.setEchoMode(QLineEdit.Password)
+            self.toggle_button.setText("Show Password")
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate

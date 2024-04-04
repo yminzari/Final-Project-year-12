@@ -7,18 +7,47 @@ from PyQt5 import QtWidgets
 import PyQt5
 
 
+def ShowRegister(CurrentWindow):
+    window = QtWidgets.QMainWindow()
+    RegisterUi = PyQ5_windows.Ui_RegisterWindow()
+    RegisterUi.setupUi(window, Enter, ShowLogIn)
+    window.show()
+    CurrentWindow.close()
+
+
+def ShowLogIn(CurrentWindow):
+    window = QtWidgets.QMainWindow()
+    LogInUi = PyQ5_windows.Ui_LogInWindow()
+    LogInUi.setupUi(window, Enter, ShowRegister)
+    window.show()
+    CurrentWindow.close()
+
+
 # Use callback very smart
 def Enter(Username:PyQt5.QtWidgets.QLineEdit, FirstName:PyQt5.QtWidgets.QLineEdit, LastName:PyQt5.QtWidgets.QLineEdit, Password_LineEdit:PyQt5.QtWidgets.QLineEdit, ConfirmPassword_LineEdit:PyQt5.QtWidgets.QLineEdit, ClassName):
-    print(f"{Username.text()} {FirstName.text()} {LastName.text()} {Password_LineEdit.text()} {ConfirmPassword_LineEdit.text()}")
+    global RegisterOrLogIn
+    global UserInformation
     if ClassName == "Register":
-        # handle register
-        # return "connection succeed"
-        return "foasnfioasdnaofnasoif"
-        pass
+        if ConfirmPassword_LineEdit.text() != Password_LineEdit.text():
+            return "Password and Confirm Password are different"
+        else:
+            RegisterOrLogIn = "1"
+            UserInformation = {"Username": Username.text(), "Password": Password_LineEdit.text(), "FirstName": FirstName.text(), "LastName": LastName.text()}
+            send_data(client_socket, RegisterOrLogIn, 1, "")
+            data = UserInformation
+            send_data(client_socket, data, 1, "")
+            data_recv = recv_msg(client_socket)
+            print(data_recv["msg"])
+            return data_recv["msg"]
     elif ClassName == "LogIn":
-        # handle LogIn
-        return "connection succeed"
-        pass
+        RegisterOrLogIn = "2"
+        UserInformation = {"Username": Username.text(), "Password": Password_LineEdit.text()}
+        send_data(client_socket, RegisterOrLogIn, 1, "")
+        data = UserInformation
+        send_data(client_socket, data, 1, "")
+        data_recv = recv_msg(client_socket)
+        print(data_recv["msg"])
+        return data_recv["msg"]
 
 
 def send_data(conn, data, operation, file_to_send):
@@ -36,6 +65,7 @@ def send_data(conn, data, operation, file_to_send):
         # Send the packed length over the socket
         conn.sendall(packed_length)
         conn.sendall(data)
+        data = UserInformation
 
 
 def recv_msg(conn):
@@ -48,25 +78,31 @@ def recv_msg(conn):
 
 host = '127.0.0.1'
 port = 12345
+RegisterWindow = PyQ5_windows.Ui_RegisterWindow()
+LogInWindow = PyQ5_windows.Ui_LogInWindow()
+LogInOrRegister = PyQ5_windows.Ui_LogInOrRegister()
+UserInformation = {}
+RegisterOrLogIn = ""
+client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+client_socket.connect((host, port))
 
 
 def main():
-    while True:
-        jorge = PyQ5_windows.Ui_LogInOrRegister(Enter)
-        app = QtWidgets.QApplication(sys.argv)
-        MainWindow = QtWidgets.QMainWindow()
-        ui = jorge
-        ui.setupUi(MainWindow)
-        MainWindow.show()
-        sys.exit(app.exec_())
-    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client_socket.connect((host, port))
-    data = input("pls enter 1 for register and 2 for log in: ")
+    global LogInOrRegister
+    app = QtWidgets.QApplication(sys.argv)
+    MainWindow = QtWidgets.QMainWindow()
+    LogInOrRegisterui = LogInOrRegister
+    LogInOrRegisterui.setupUi(MainWindow, ShowRegister, ShowLogIn)
+    MainWindow.show()
+    app.exec_()
+    # data = input("pls enter 1 for register and 2 for log in: ")
+    data = RegisterOrLogIn
     send_data(client_socket, data, 1, "")
-    data = input("pls enter username and password with | between and 6 or more characters with at least one number in the password: ")
-    if "|" not in data:
-        print("didn't put | in the username and password")
-        quit()
+    # data = input("pls enter username and password with | between and 6 or more characters with at least one number in the password: ")
+    data = UserInformation
+    # if "|" not in data:
+    #    print("didn't put | in the username and password")
+    #    quit()
     send_data(client_socket, data, 1, "")
     data_recv = recv_msg(client_socket)
     print(data_recv["msg"])
@@ -88,6 +124,7 @@ def main():
     data = "exit"
     send_data(client_socket, data, 1, "")
     client_socket.close()
+    # sys.exit(app.exec_())
 
 
 if __name__ == "__main__":
