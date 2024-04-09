@@ -1,9 +1,12 @@
+import os
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import QMessageBox, QLineEdit, QPushButton
+from PyQt5.QtWidgets import QMessageBox, QLineEdit, QPushButton, QFileDialog, QLabel, QCalendarWidget, QTableWidgetItem
+from PyQt5.QtCore import QDate
 
-
+# need in the file window deal with all the sorts obviously deal with the listing of the files as well
 class Ui_LogInOrRegister(object):
 
     def OpenLogInWindow(self, MainWindow, CallBackShowLogIn):
@@ -78,21 +81,20 @@ class Ui_LogInOrRegister(object):
 
 
 class Ui_LogInWindow(object):
-    def call_Enter(self, EnterCallBack):
-        self.result = EnterCallBack(self.Username, "", "", self.Password_LineEdit, "", "LogIn")
+    def call_Enter(self, EnterCallBack, CallBackFileWindow, MainWindow):
+        self.result, files = EnterCallBack(self.Username, "", "", self.Password_LineEdit, "", "LogIn")
         if self.result != "connection succeed":
             msg_box = QMessageBox()
             msg_box.setWindowTitle("Bomboclat")
             msg_box.setText(self.result)
             msg_box.exec_()
         else:
-            # need to add what happens if successfully connected
-            pass
+            CallBackFileWindow(MainWindow, files)
 
     def OpenRegistrtWindow(self, MainWindow, CallBackShowRegister):
         CallBackShowRegister(MainWindow)
 
-    def setupUi(self, MainWindow, EnterCallBack, CallBackShowRegister):
+    def setupUi(self, MainWindow, EnterCallBack, CallBackShowRegister, CallBackFileWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(711, 620)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
@@ -105,7 +107,7 @@ class Ui_LogInWindow(object):
         self.label.setAlignment(QtCore.Qt.AlignCenter)
         self.label.setObjectName("label")
         self.result = ""
-        self.Enter = QtWidgets.QPushButton(self.centralwidget, clicked=lambda: self.call_Enter(EnterCallBack))
+        self.Enter = QtWidgets.QPushButton(self.centralwidget, clicked=lambda: self.call_Enter(EnterCallBack, CallBackFileWindow, MainWindow))
         self.Enter.setGeometry(QtCore.QRect(260, 430, 191, 51))
         font = QtGui.QFont()
         font.setPointSize(12)
@@ -193,7 +195,7 @@ class Ui_LogInWindow(object):
 
 
 class Ui_RegisterWindow(object):
-    def call_Enter(self, EnterCallBack):
+    def call_Enter(self, EnterCallBack, CallBackFileWindow, MainWindow):
         self.result = EnterCallBack(self.Username, self.FirstName, self.LastName, self.Password_LineEdit, self.ConfirmPassword_LineEdit, "Register")
         if self.result != "connection succeed":
             msg_box = QMessageBox()
@@ -201,13 +203,12 @@ class Ui_RegisterWindow(object):
             msg_box.setText(self.result)
             msg_box.exec_()
         else:
-            # need to add what happens if successfully connected
-            pass
+            CallBackFileWindow(MainWindow)
 
     def OpenLogInWindow(self, MainWindow, CallBackShowLogIn):
         CallBackShowLogIn(MainWindow)
 
-    def setupUi(self, MainWindow, EnterCallBack, CallBackShowLogIn):
+    def setupUi(self, MainWindow, EnterCallBack, CallBackShowLogIn, CallBackFileWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(1099, 845)
         MainWindow.setLayoutDirection(QtCore.Qt.LeftToRight)
@@ -221,7 +222,7 @@ class Ui_RegisterWindow(object):
         self.label.setAlignment(QtCore.Qt.AlignCenter)
         self.label.setObjectName("label")
         self.result = ""
-        self.Enter = QtWidgets.QPushButton(self.centralwidget, clicked=lambda: self.call_Enter(EnterCallBack))
+        self.Enter = QtWidgets.QPushButton(self.centralwidget, clicked=lambda: self.call_Enter(EnterCallBack, CallBackFileWindow, MainWindow))
         self.Enter.setGeometry(QtCore.QRect(470, 660, 191, 51))
         font = QtGui.QFont()
         font.setPointSize(12)
@@ -370,6 +371,349 @@ class Ui_RegisterWindow(object):
         self.label_3.setText(_translate("MainWindow", "Password:"))
         self.label_4.setText(_translate("MainWindow", "Confirm Password:"))
         self.actionHelp.setText(_translate("MainWindow", "Help"))
+
+
+class Ui_file_window(object):
+    def setupUi_file_window(self, MainWindow, add_file_call_back):
+        MainWindow.setObjectName("MainWindow")
+        MainWindow.resize(1124, 896)
+        self.centralwidget = QtWidgets.QWidget(MainWindow)
+        self.centralwidget.setObjectName("centralwidget")
+        self.file_list = QtWidgets.QListWidget(self.centralwidget)
+        self.file_list.setGeometry(QtCore.QRect(10, 150, 1111, 701))
+        self.file_list.setObjectName("file_list")
+        self.search_file_line_edit = QtWidgets.QLineEdit(self.centralwidget)
+        self.search_file_line_edit.setGeometry(QtCore.QRect(140, 30, 981, 31))
+        self.search_file_line_edit.setObjectName("search_file_line_edit")
+        self.search_file_lable = QtWidgets.QLabel(self.centralwidget)
+        self.search_file_lable.setGeometry(QtCore.QRect(140, 10, 371, 21))
+        self.search_file_lable.setText("Search A File: ")
+        self.label = QtWidgets.QLabel(self.centralwidget)
+        self.label.setGeometry(QtCore.QRect(80, 10, 371, 21))
+        self.label.setText("")
+        self.label.setObjectName("label")
+        self.add_file_pushButton = QtWidgets.QPushButton(self.centralwidget, clicked=lambda: self.add_file(add_file_call_back))
+        self.add_file_pushButton.setGeometry(QtCore.QRect(0, 30, 131, 31))
+        # self.add_file_pushButton.clicked.connect(self.add_file)
+        icon = QtGui.QIcon()
+        icon.addPixmap(QtGui.QPixmap("../../../Downloads/icons8-file-64.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.add_file_pushButton.setIcon(icon)
+        self.add_file_pushButton.setIconSize(QtCore.QSize(24, 24))
+        self.add_file_pushButton.setObjectName("add_file_pushButton")
+        self.search_keyword_lineEdit = QtWidgets.QLineEdit(self.centralwidget)
+        self.search_keyword_lineEdit.setGeometry(QtCore.QRect(140, 90, 181, 31))
+        self.search_keyword_lineEdit.setObjectName("search_keyword_lineEdit")
+        self.search_keyword_lable = QtWidgets.QLabel(self.centralwidget)
+        self.search_keyword_lable.setGeometry(QtCore.QRect(140, 70, 371, 21))
+        self.search_keyword_lable.setText("Enter Keyword to search: ")
+        self.search_keyword_lable.setObjectName("search_keyword_lable")
+        self.edited_date_comboBox = QtWidgets.QComboBox(self.centralwidget)
+        self.edited_date_comboBox.setGeometry(QtCore.QRect(340, 90, 181, 31))
+        self.edited_date_comboBox.setCurrentText("")
+        self.edited_date_comboBox.setObjectName("edited_date_comboBox")
+        self.edited_date_comboBox.addItem("All")
+        self.edited_date_comboBox.addItems(["today", "the last seven days", "the last thirty days", "this year", "custom date range"])
+        self.file_type_comboBox = QtWidgets.QComboBox(self.centralwidget)
+        self.file_type_comboBox.setGeometry(QtCore.QRect(540, 90, 191, 31))
+        self.file_type_comboBox.setObjectName("file_type_comboBox")
+        self.file_type_comboBox.addItem("All")
+        self.file_type_comboBox.addItems(["txt", "docx"])
+        self.owner_comboBox = QtWidgets.QComboBox(self.centralwidget)
+        self.owner_comboBox.setGeometry(QtCore.QRect(750, 90, 191, 31))
+        self.owner_comboBox.setObjectName("owner_comboBox")
+        self.owner_comboBox.addItem("All")
+        self.edit_date_label = QtWidgets.QLabel(self.centralwidget)
+        self.edit_date_label.setGeometry(QtCore.QRect(340, 70, 171, 16))
+        self.edit_date_label.setObjectName("edit_date_label")
+        self.file_type_label = QtWidgets.QLabel(self.centralwidget)
+        self.file_type_label.setGeometry(QtCore.QRect(540, 70, 171, 16))
+        self.file_type_label.setObjectName("file_type_label")
+        self.owner_label = QtWidgets.QLabel(self.centralwidget)
+        self.owner_label.setGeometry(QtCore.QRect(750, 70, 171, 16))
+        self.owner_label.setObjectName("owner_label")
+        self.edited_date_comboBox = QtWidgets.QComboBox(self.centralwidget)
+        self.edited_date_comboBox.setGeometry(QtCore.QRect(340, 90, 181, 31))
+        self.edited_date_comboBox.setCurrentText("")
+        self.edited_date_comboBox.setObjectName("edited_date_comboBox")
+        self.edited_date_comboBox.addItem("All")
+        self.edited_date_comboBox.addItems(
+            ["today", "the last seven days", "the last thirty days", "this year", "custom date range"])
+        self.edited_date_comboBox.currentIndexChanged.connect(self.handle_date_range_selection)
+        self.custom_date_range_widget = None  # Initialize the custom date range widget
+        MainWindow.setCentralWidget(self.centralwidget)
+        self.menubar = QtWidgets.QMenuBar(MainWindow)
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 1124, 21))
+        self.menubar.setObjectName("menubar")
+        MainWindow.setMenuBar(self.menubar)
+        self.statusbar = QtWidgets.QStatusBar(MainWindow)
+        self.statusbar.setObjectName("statusbar")
+        MainWindow.setStatusBar(self.statusbar)
+
+        self.retranslateUi(MainWindow)
+        QtCore.QMetaObject.connectSlotsByName(MainWindow)
+
+    def handle_date_range_selection(self, index):
+        if self.edited_date_comboBox.currentText() == "custom date range":
+            if self.custom_date_range_widget is None:
+                self.custom_date_range_widget = self.create_custom_date_range_widget()
+            self.custom_date_range_widget.show()
+        else:
+            if self.custom_date_range_widget is not None:
+                self.custom_date_range_widget.hide()
+
+    def create_custom_date_range_widget(self):
+        # Create a new widget for the custom date range selection
+        custom_date_range_widget = QtWidgets.QWidget(self.centralwidget)
+        custom_date_range_widget.setGeometry(QtCore.QRect(340, 150, 400, 200))
+        custom_date_range_widget.setWindowTitle("Select Custom Date Range")
+
+        # Create a layout for the custom date range widget
+        layout = QtWidgets.QVBoxLayout(custom_date_range_widget)
+
+        # Create a layout for the start and end date selection
+        date_range_layout = QtWidgets.QHBoxLayout()
+
+        # Create the start date selection
+        start_date_label = QtWidgets.QLabel("Start Date:")
+        self.start_date_edit = QtWidgets.QDateEdit(custom_date_range_widget)
+        self.start_date_edit.setCalendarPopup(True)
+        date_range_layout.addWidget(start_date_label)
+        date_range_layout.addWidget(self.start_date_edit)
+
+        # Create the end date selection
+        end_date_label = QtWidgets.QLabel("End Date:")
+        self.end_date_edit = QtWidgets.QDateEdit(custom_date_range_widget)
+        self.end_date_edit.setCalendarPopup(True)
+        date_range_layout.addWidget(end_date_label)
+        date_range_layout.addWidget(self.end_date_edit)
+
+        layout.addLayout(date_range_layout)
+
+        # Create buttons to confirm and cancel the selection
+        button_layout = QtWidgets.QHBoxLayout()
+        confirm_button = QtWidgets.QPushButton("Confirm")
+        cancel_button = QtWidgets.QPushButton("Cancel")
+        button_layout.addWidget(confirm_button)
+        button_layout.addWidget(cancel_button)
+        layout.addLayout(button_layout)
+
+        # Connect the confirm and cancel buttons to appropriate functions
+        confirm_button.clicked.connect(lambda: self.handle_custom_date_range_confirmation(self.start_date_edit, self.end_date_edit))
+        cancel_button.clicked.connect(custom_date_range_widget.hide)
+
+        return custom_date_range_widget
+
+    def handle_custom_date_range_confirmation(self, start_date_edit, end_date_edit):
+        # Get the selected start and end dates from the date edit widgets
+        start_date = start_date_edit.date()
+        end_date = end_date_edit.date()
+
+        # Do something with the selected date range, e.g., update the UI or perform a search
+        print(f"Selected date range: {start_date.toString()} - {end_date.toString()}")
+
+        # Hide the custom date range widget
+        self.custom_date_range_widget.hide()
+
+    def add_file(self, add_file_call_back):
+        self.file_name, answer = add_file_call_back()
+        if answer != "Saved File":
+            return
+        self.add_file_to_list(self.file_name)
+
+    def add_file_to_list(self, file):
+        self.file_list.addItem(file)
+
+    def retranslateUi(self, MainWindow):
+        _translate = QtCore.QCoreApplication.translate
+        MainWindow.setWindowTitle(_translate("MainWindow", "file_window"))
+        self.search_file_line_edit.setText(_translate("MainWindow", ""))
+        self.add_file_pushButton.setText(_translate("MainWindow", "Add File"))
+        self.search_keyword_lineEdit.setText(_translate("MainWindow", ""))
+        self.edit_date_label.setText(_translate("MainWindow", "Edited Date:"))
+        self.file_type_label.setText(_translate("MainWindow", "File Type:"))
+        self.owner_label.setText(_translate("MainWindow", "Owner:"))
+class Ui_file_window_ver2(object):
+    def setupUi_file_window(self, MainWindow, add_file_call_back, search_by_criteria):
+        MainWindow.setObjectName("MainWindow")
+        MainWindow.resize(1124, 896)
+        self.centralwidget = QtWidgets.QWidget(MainWindow)
+        self.centralwidget.setObjectName("centralwidget")
+        self.file_tabel = QtWidgets.QTableWidget(self.centralwidget)
+        self.file_tabel.setGeometry(QtCore.QRect(10, 150, 1111, 701))
+        self.file_tabel.setObjectName("file_table")
+        self.file_tabel.setRowCount(0)
+        self.file_tabel.setColumnCount(3)
+        self.file_tabel.setColumnWidth(0, 700)
+        self.file_tabel.setColumnWidth(1, 200)
+        self.file_tabel.setColumnWidth(2, 200)
+        self.file_tabel.setHorizontalHeaderLabels(["File Name", "Date Created", "File Owner"])
+        self.search_file_line_edit = QtWidgets.QLineEdit(self.centralwidget)
+        self.search_file_line_edit.setGeometry(QtCore.QRect(140, 30, 981, 31))
+        self.search_file_line_edit.setObjectName("search_file_line_edit")
+        self.search_file_lable = QtWidgets.QLabel(self.centralwidget)
+        self.search_file_lable.setGeometry(QtCore.QRect(140, 10, 371, 21))
+        self.search_file_lable.setText("Search A File: ")
+        self.label = QtWidgets.QLabel(self.centralwidget)
+        self.label.setGeometry(QtCore.QRect(80, 10, 371, 21))
+        self.label.setText("")
+        self.label.setObjectName("label")
+        self.add_file_pushButton = QtWidgets.QPushButton(self.centralwidget, clicked=lambda: self.add_file(add_file_call_back))
+        self.add_file_pushButton.setGeometry(QtCore.QRect(0, 30, 131, 31))
+        # self.add_file_pushButton.clicked.connect(self.add_file)
+        icon = QtGui.QIcon()
+        icon.addPixmap(QtGui.QPixmap("../../../Downloads/icons8-file-64.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.add_file_pushButton.setIcon(icon)
+        self.add_file_pushButton.setIconSize(QtCore.QSize(24, 24))
+        self.add_file_pushButton.setObjectName("add_file_pushButton")
+        self.search_file_button = QtWidgets.QPushButton(self.centralwidget, clicked= lambda: self.search(search_by_criteria))
+        self.search_file_button.setGeometry(QtCore.QRect(0, 71, 131, 31))
+        self.search_file_button.setObjectName("search_file_pushButton")
+        self.search_keyword_lineEdit = QtWidgets.QLineEdit(self.centralwidget)
+        self.search_keyword_lineEdit.setGeometry(QtCore.QRect(140, 90, 181, 31))
+        self.search_keyword_lineEdit.setObjectName("search_keyword_lineEdit")
+        self.search_keyword_lable = QtWidgets.QLabel(self.centralwidget)
+        self.search_keyword_lable.setGeometry(QtCore.QRect(140, 70, 371, 21))
+        self.search_keyword_lable.setText("Enter Keyword to search: ")
+        self.search_keyword_lable.setObjectName("search_keyword_lable")
+        self.edited_date_comboBox = QtWidgets.QComboBox(self.centralwidget)
+        self.edited_date_comboBox.setGeometry(QtCore.QRect(340, 90, 181, 31))
+        self.edited_date_comboBox.setCurrentText("")
+        self.edited_date_comboBox.setObjectName("edited_date_comboBox")
+        self.edited_date_comboBox.addItem("All")
+        self.edited_date_comboBox.addItems(["today", "the last seven days", "the last thirty days", "this year", "custom date range"])
+        self.file_type_comboBox = QtWidgets.QComboBox(self.centralwidget)
+        self.file_type_comboBox.setGeometry(QtCore.QRect(540, 90, 191, 31))
+        self.file_type_comboBox.setObjectName("file_type_comboBox")
+        self.file_type_comboBox.addItem("All")
+        self.file_type_comboBox.addItems(["txt", "docx"])
+        self.owner_comboBox = QtWidgets.QComboBox(self.centralwidget)
+        self.owner_comboBox.setGeometry(QtCore.QRect(750, 90, 191, 31))
+        self.owner_comboBox.setObjectName("owner_comboBox")
+        self.owner_comboBox.addItem("All")
+        self.edit_date_label = QtWidgets.QLabel(self.centralwidget)
+        self.edit_date_label.setGeometry(QtCore.QRect(340, 70, 171, 16))
+        self.edit_date_label.setObjectName("edit_date_label")
+        self.file_type_label = QtWidgets.QLabel(self.centralwidget)
+        self.file_type_label.setGeometry(QtCore.QRect(540, 70, 171, 16))
+        self.file_type_label.setObjectName("file_type_label")
+        self.owner_label = QtWidgets.QLabel(self.centralwidget)
+        self.owner_label.setGeometry(QtCore.QRect(750, 70, 171, 16))
+        self.owner_label.setObjectName("owner_label")
+        self.edited_date_comboBox = QtWidgets.QComboBox(self.centralwidget)
+        self.edited_date_comboBox.setGeometry(QtCore.QRect(340, 90, 181, 31))
+        self.edited_date_comboBox.setCurrentText("")
+        self.edited_date_comboBox.setObjectName("edited_date_comboBox")
+        self.edited_date_comboBox.addItem("All")
+        self.edited_date_comboBox.addItems(
+            ["today", "the last seven days", "the last thirty days", "this year", "custom date range"])
+        self.edited_date_comboBox.currentIndexChanged.connect(self.handle_date_range_selection)
+        self.custom_date_range_widget = None  # Initialize the custom date range widget
+        MainWindow.setCentralWidget(self.centralwidget)
+        self.menubar = QtWidgets.QMenuBar(MainWindow)
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 1124, 21))
+        self.menubar.setObjectName("menubar")
+        MainWindow.setMenuBar(self.menubar)
+        self.statusbar = QtWidgets.QStatusBar(MainWindow)
+        self.statusbar.setObjectName("statusbar")
+        MainWindow.setStatusBar(self.statusbar)
+
+        self.retranslateUi(MainWindow)
+        QtCore.QMetaObject.connectSlotsByName(MainWindow)
+
+    def search(self, search_by_criteria):
+        search = self.search_file_line_edit.text()
+        file_type = self.file_type_comboBox.currentText()
+        date = self.edited_date_comboBox.currentText()
+        start_date = self.start_date_edit.text()
+        end_date = self.end_date_edit.text()
+        files = search_by_criteria(search, file_type, date, start_date, end_date)
+        self.file_tabel.clearContents()
+        self.file_tabel.setRowCount(0)
+        for item in files:
+            self.add_file_to_list(item)
+
+    def handle_date_range_selection(self, index):
+        if self.edited_date_comboBox.currentText() == "custom date range":
+            self.show_custom_date_range_dialog()
+        else:
+            self.hide_custom_date_range_dialog()
+
+    def show_custom_date_range_dialog(self):
+        self.custom_date_range_dialog = QtWidgets.QDialog(self.centralwidget)
+        self.custom_date_range_dialog.setWindowTitle("Select Custom Date Range")
+        self.custom_date_range_dialog.setModal(True)
+
+        layout = QtWidgets.QVBoxLayout(self.custom_date_range_dialog)
+
+        date_range_layout = QtWidgets.QHBoxLayout()
+
+        start_date_label = QtWidgets.QLabel("Start Date:")
+        self.start_date_edit = QtWidgets.QDateEdit(self.custom_date_range_dialog)
+        self.start_date_edit.setCalendarPopup(True)
+        date_range_layout.addWidget(start_date_label)
+        date_range_layout.addWidget(self.start_date_edit)
+
+        end_date_label = QtWidgets.QLabel("End Date:")
+        self.end_date_edit = QtWidgets.QDateEdit(self.custom_date_range_dialog)
+        self.end_date_edit.setCalendarPopup(True)
+        date_range_layout.addWidget(end_date_label)
+        date_range_layout.addWidget(self.end_date_edit)
+
+        layout.addLayout(date_range_layout)
+
+        button_layout = QtWidgets.QHBoxLayout()
+        confirm_button = QtWidgets.QPushButton("Confirm")
+        cancel_button = QtWidgets.QPushButton("Cancel")
+        button_layout.addWidget(confirm_button)
+        button_layout.addWidget(cancel_button)
+        layout.addLayout(button_layout)
+
+        confirm_button.clicked.connect(
+            lambda: self.handle_custom_date_range_confirmation(self.start_date_edit, self.end_date_edit))
+        cancel_button.clicked.connect(self.hide_custom_date_range_dialog)
+
+        self.custom_date_range_dialog.exec_()
+
+    def hide_custom_date_range_dialog(self):
+        self.custom_date_range_dialog.hide()
+
+    def handle_custom_date_range_confirmation(self, start_date_edit, end_date_edit):
+        start_date = start_date_edit.date()
+        end_date = end_date_edit.date()
+
+        print(f"Selected date range: {start_date.toString()} - {end_date.toString()}")
+
+        self.hide_custom_date_range_dialog()
+
+    def add_file(self, add_file_call_back):
+        self.file_name, answer = add_file_call_back()
+        if answer != "Saved File":
+            return
+        self.file_tabel.clearContents()
+        self.file_tabel.setRowCount(0)
+        for item in self.file_name:
+            self.add_file_to_list(item)
+
+    def add_file_to_list(self, file):
+        print(file)
+        self.file_tabel.setRowCount(self.file_tabel.rowCount() + 1)
+        column = 0
+        row = self.file_tabel.rowCount() - 1
+        print(row)
+        for item in file:
+            self.file_tabel.setItem(row, column, QTableWidgetItem(item))
+            column += 1
+
+    def retranslateUi(self, MainWindow):
+        _translate = QtCore.QCoreApplication.translate
+        MainWindow.setWindowTitle(_translate("MainWindow", "file_window"))
+        self.search_file_line_edit.setText(_translate("MainWindow", ""))
+        self.add_file_pushButton.setText(_translate("MainWindow", "Add File"))
+        self.search_keyword_lineEdit.setText(_translate("MainWindow", ""))
+        self.edit_date_label.setText(_translate("MainWindow", "Edited Date:"))
+        self.file_type_label.setText(_translate("MainWindow", "File Type:"))
+        self.owner_label.setText(_translate("MainWindow", "Owner:"))
+        self.search_file_button.setText(_translate("MainWindow", "Search"))
 
 
 if __name__ == "__main__":

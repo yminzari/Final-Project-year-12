@@ -1,4 +1,5 @@
 import base64
+import os
 import msgpack
 
 
@@ -23,15 +24,19 @@ def create_string_header(msg):
 
 
 def create_file_header(msg, filepath):
-    hdict = {"operation": "2",
-             "length": str(len(msg)).zfill(8),
-             "msg": msg,
-             "file_path": filepath
-             }
-    return msgpack.packb(hdict)
+    try:
+        hdict = {"operation": "2",
+                 "msg": msg,
+                 "file_path": filepath
+                 }
+        return msgpack.packb(hdict)
+    except Exception as e:
+        print(e)
+        return e
 
 
 def parse_header(mbin):
     # Now, decode the accumulated_data
     hdict = msgpack.unpackb(mbin)
     return hdict
+

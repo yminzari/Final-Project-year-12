@@ -1,16 +1,77 @@
 import socket
 import struct
+
+from PyQt5.QtWidgets import QFileDialog
+from PyQ5_windows import Ui_file_window
 import protocol
 import PyQ5_windows
 import sys
 from PyQt5 import QtWidgets
 import PyQt5
+import os
+
+
+# need to send added files to the server and deal with responses appropriately
+def ShowFileWindow(CurrentWindow, files):
+    global file_window
+    print(files)
+    file_window = QtWidgets.QMainWindow()
+    FileWindow_ui = PyQ5_windows.Ui_file_window_ver2()
+    FileWindow_ui.setupUi_file_window(file_window, add_file, search_by_criteria)
+    try:
+        if len(files) > 0:
+            for file in files:
+                PyQ5_windows.Ui_file_window_ver2.add_file_to_list(FileWindow_ui, file)
+        file_window.show()
+        CurrentWindow.close()
+    except Exception as e:
+        print(e)
+
+
+def add_file():
+    file_path = QFileDialog.getOpenFileName(None, "upload a file", os.path.expanduser("~"), "All (*.txt *.docx) ;;Docx (*.docx);; text (*.txt);")
+    if file_path[0] == "":
+        return "", "error"
+    print(file_path[0])
+    with open(file_path[0], "rb") as data:
+        print(data)
+        file = data.read()
+    file_name = file_path[0].split("/")[-1]
+    send_data(client_socket, file, 2, file_path[0])
+    answer = recv_msg(client_socket)["msg"]
+    file_name = recv_msg(client_socket)["msg"]
+    print(answer)
+    return file_name, answer
+    # file_list.addItem(file_name)
+
+
+def search_by_criteria(search, file_type, date, start_date, end_date):
+    ext_query = ""
+    if search != "":
+        ext_query = f"and (file_path like '%{search}%')"
+    if file_type != "All":
+        ext_query += f" and (file_type ='{file_type}')"
+    if date != "ALL":
+        if date == "today":
+            ext_query += " and (date_create > trunc(sysdate))"
+        if date == "last 7 days":
+            ext_query += " and (date_create > sysdate-7)"
+        if date == "last 30 days":
+            ext_query += " and (date_create > sysdate-30)"
+        if date == "this year":
+            ext_query += " and (to_char(date_create,'yyyy') =  to_char(sysdate,'yyyy'))"
+        if date == "custom date range":
+            if start_date != "" and end_date != "":
+                ext_query += f" and (date_create between to_date('{start_date}','mm/dd/yyyy') and to_date('{end_date}','mm/dd/yyyy'))"
+    send_data(client_socket, ext_query, 1, "")
+    files = recv_msg(client_socket)
+    return files["msg"]
 
 
 def ShowRegister(CurrentWindow):
     window = QtWidgets.QMainWindow()
     RegisterUi = PyQ5_windows.Ui_RegisterWindow()
-    RegisterUi.setupUi(window, Enter, ShowLogIn)
+    RegisterUi.setupUi(window, Enter, ShowLogIn, ShowFileWindow)
     window.show()
     CurrentWindow.close()
 
@@ -18,7 +79,7 @@ def ShowRegister(CurrentWindow):
 def ShowLogIn(CurrentWindow):
     window = QtWidgets.QMainWindow()
     LogInUi = PyQ5_windows.Ui_LogInWindow()
-    LogInUi.setupUi(window, Enter, ShowRegister)
+    LogInUi.setupUi(window, Enter, ShowRegister, ShowFileWindow)
     window.show()
     CurrentWindow.close()
 
@@ -29,7 +90,7 @@ def Enter(Username:PyQt5.QtWidgets.QLineEdit, FirstName:PyQt5.QtWidgets.QLineEdi
     global UserInformation
     if ClassName == "Register":
         if ConfirmPassword_LineEdit.text() != Password_LineEdit.text():
-            return "Password and Confirm Password are different"
+            return "The password and the password conformation do not match"
         else:
             RegisterOrLogIn = "1"
             UserInformation = {"Username": Username.text(), "Password": Password_LineEdit.text(), "FirstName": FirstName.text(), "LastName": LastName.text()}
@@ -46,8 +107,9 @@ def Enter(Username:PyQt5.QtWidgets.QLineEdit, FirstName:PyQt5.QtWidgets.QLineEdi
         data = UserInformation
         send_data(client_socket, data, 1, "")
         data_recv = recv_msg(client_socket)
+        files = recv_msg(client_socket)["msg"]
         print(data_recv["msg"])
-        return data_recv["msg"]
+        return data_recv["msg"], files
 
 
 def send_data(conn, data, operation, file_to_send):
@@ -59,13 +121,17 @@ def send_data(conn, data, operation, file_to_send):
         conn.sendall(packed_length)
         conn.sendall(data)
     elif operation == 2:
+        # print(os.path.getsize(file_to_send))
         data = protocol.create_file_header(data, file_to_send)
+        # print(data)
         length = len(data)
+        # print(length)
         packed_length = struct.pack('>I', length)
         # Send the packed length over the socket
+        # print(packed_length)
         conn.sendall(packed_length)
         conn.sendall(data)
-        data = UserInformation
+        # data = UserInformation
 
 
 def recv_msg(conn):
@@ -81,6 +147,7 @@ port = 12345
 RegisterWindow = PyQ5_windows.Ui_RegisterWindow()
 LogInWindow = PyQ5_windows.Ui_LogInWindow()
 LogInOrRegister = PyQ5_windows.Ui_LogInOrRegister()
+FileWindow = PyQ5_windows.Ui_file_window()
 UserInformation = {}
 RegisterOrLogIn = ""
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
