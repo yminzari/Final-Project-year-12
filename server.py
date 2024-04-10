@@ -13,6 +13,7 @@ socket_to_user_id = {}
 
 # when wanting to save a file use f"{save_dirct}\\{username}" as it is the folder for each user
 # need to deal with received files from the client
+# need to deal with owner and keyword filter :)
 def handle_client(conn, client_address):
     global function_name
     function_name = "handle_client"
@@ -108,6 +109,7 @@ def send_files_by_criteria(criteria, cursor, conn):
         print(query)
         cursor.execute(query, (socket_to_user_id.get(conn),))
         files = cursor.fetchall()
+        print(files)
         send_data(conn, files, 1, "")
     except Exception as e:
         print(e)
@@ -306,7 +308,7 @@ function_name = ""
 
 
 def main():
-    host = '127.0.0.1'
+    host = '0.0.0.0'
     port = 12345
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((host, port))
