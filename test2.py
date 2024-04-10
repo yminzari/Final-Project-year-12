@@ -11,13 +11,22 @@ import PyQt5
 import os
 
 
+def download_file(file_path, download_path):
+    req_dir = {"req": "download", "file_path": file_path}
+    send_data(client_socket, req_dir, 1, "")
+    file_msg = recv_msg(client_socket)
+    file_path_dict = file_msg.get("file_path").split("/")
+    with open(download_path + "/" + file_path_dict[-1], 'wb') as file:
+        file.write(file_msg.get("msg"))
+
+
 # need to send added files to the server and deal with responses appropriately
 def ShowFileWindow(CurrentWindow, files):
     global file_window
     print(files)
     file_window = QtWidgets.QMainWindow()
     FileWindow_ui = PyQ5_windows.Ui_file_window_ver2()
-    FileWindow_ui.setupUi_file_window(file_window, add_file, search_by_criteria)
+    FileWindow_ui.setupUi_file_window(file_window, add_file, search_by_criteria, download_file)
     try:
         if len(files) > 0:
             for file in files:
@@ -31,7 +40,7 @@ def ShowFileWindow(CurrentWindow, files):
 def add_file():
     file_path = QFileDialog.getOpenFileName(None, "upload a file", os.path.expanduser("~"), "All (*.txt *.docx) ;;Docx (*.docx);; text (*.txt);")
     if file_path[0] == "":
-        return "", "error"
+        return "", "no file was selected"
     print(file_path[0])
     with open(file_path[0], "rb") as data:
         print(data)
@@ -63,7 +72,8 @@ def search_by_criteria(search, file_type, date, start_date, end_date):
         if date == "custom date range":
             if start_date != "" and end_date != "":
                 ext_query += f" and (date_create between to_date('{start_date}','mm/dd/yyyy') and to_date('{end_date}','mm/dd/yyyy'))"
-    send_data(client_socket, ext_query, 1, "")
+    req_dir = {"req": "ext_query", "ext_query": ext_query}
+    send_data(client_socket, req_dir, 1, "")
     files = recv_msg(client_socket)
     return files["msg"]
 

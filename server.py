@@ -60,13 +60,27 @@ def handle_client(conn, client_address):
             handle_files(conn, data, cursor, connectiondb)
         # need to add dealing with the different req
         elif data.get("operation") == "1":
-            send_files_by_criteria(data["msg"], cursor, conn)
+            if data["msg"]["req"] == "download":
+                file_path = data["msg"]["file_path"]
+                with open(file_path, "rb") as data:
+                    print(data)
+                    file = data.read()
+                send_data(conn, file, 2, file_path)
+            elif data["msg"]["req"] == "ext_query":
+                send_files_by_criteria(data["msg"]["ext_query"], cursor, conn)
 
 
 def handle_files(conn, data, cursor, connectiondb):
     try:
         file_path_dict = data.get("file_path").split("/")
         print(file_path_dict[-1])
+        cursor.execute("SELECT COUNT(*) FROM FILE_LIST_TBL WHERE FILE_PATH = :file_path", (save_dirct + "/" + socket_to_username.get(conn) + "/" + file_path_dict[-1],))
+        result = cursor.fetchone()[0]
+        print("result: " + str(result))
+        if result > 0:
+            send_data(conn, "file already exists", 1, "")
+            send_data(conn, "", 1, "")
+            return
         with open(save_dirct + "/" + socket_to_username.get(conn) + "/" + file_path_dict[-1], 'wb') as file:
             file.write(data.get("msg"))
             # need to fix, so it sends a response that it recived it

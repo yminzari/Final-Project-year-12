@@ -533,7 +533,7 @@ class Ui_file_window(object):
         self.file_type_label.setText(_translate("MainWindow", "File Type:"))
         self.owner_label.setText(_translate("MainWindow", "Owner:"))
 class Ui_file_window_ver2(object):
-    def setupUi_file_window(self, MainWindow, add_file_call_back, search_by_criteria):
+    def setupUi_file_window(self, MainWindow, add_file_call_back, search_by_criteria, download_file):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(1124, 896)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
@@ -568,6 +568,13 @@ class Ui_file_window_ver2(object):
         self.search_file_button = QtWidgets.QPushButton(self.centralwidget, clicked= lambda: self.search(search_by_criteria))
         self.search_file_button.setGeometry(QtCore.QRect(0, 71, 131, 31))
         self.search_file_button.setObjectName("search_file_pushButton")
+        self.download_file_button =QtWidgets.QPushButton(self.centralwidget, clicked= lambda: self.download(download_file))
+        self.download_file_button.setGeometry(QtCore.QRect(0, 102, 131, 31))
+        self.download_file_button.setObjectName("download_file_button")
+        self.download_dir = os.path.expanduser("~/Downloads")
+        self.choose_download_dir_button = QtWidgets.QPushButton(self.centralwidget, clicked= lambda: self.choose_download_dir())
+        self.choose_download_dir_button.setGeometry(960, 90, 150, 31)
+        self.choose_download_dir_button.setObjectName("choose_download_dir_button")
         self.search_keyword_lineEdit = QtWidgets.QLineEdit(self.centralwidget)
         self.search_keyword_lineEdit.setGeometry(QtCore.QRect(140, 90, 181, 31))
         self.search_keyword_lineEdit.setObjectName("search_keyword_lineEdit")
@@ -620,12 +627,35 @@ class Ui_file_window_ver2(object):
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
+    def download(self, download_file):
+        selected_items = self.file_tabel.selectedItems()
+        if len(selected_items) > 0:
+            selected_item = selected_items[0]
+            row = selected_item.row()
+            column = selected_item.column()
+
+            if column == 0:  # Check if selected item is from the correct column
+                item_text = selected_item.text()
+                download_file(item_text, self.download_dir)
+            else:
+                print("Selected item is not from the correct column.")
+
+    def choose_download_dir(self):
+        print(self.download_dir)
+        self.download_dir = QFileDialog.getExistingDirectory(None, "pick a folder", os.path.expanduser("~"))
+        print(self.download_dir)
+
+
     def search(self, search_by_criteria):
         search = self.search_file_line_edit.text()
         file_type = self.file_type_comboBox.currentText()
         date = self.edited_date_comboBox.currentText()
-        start_date = self.start_date_edit.text()
-        end_date = self.end_date_edit.text()
+        if date == "custom date range":
+            start_date = self.start_date_edit.text()
+            end_date = self.end_date_edit.text()
+        else:
+            start_date = ""
+            end_date = ""
         files = search_by_criteria(search, file_type, date, start_date, end_date)
         self.file_tabel.clearContents()
         self.file_tabel.setRowCount(0)
@@ -688,6 +718,10 @@ class Ui_file_window_ver2(object):
     def add_file(self, add_file_call_back):
         self.file_name, answer = add_file_call_back()
         if answer != "Saved File":
+            msg_box = QMessageBox()
+            msg_box.setWindowTitle("Bomboclat")
+            msg_box.setText(answer)
+            msg_box.exec_()
             return
         self.file_tabel.clearContents()
         self.file_tabel.setRowCount(0)
@@ -714,6 +748,8 @@ class Ui_file_window_ver2(object):
         self.file_type_label.setText(_translate("MainWindow", "File Type:"))
         self.owner_label.setText(_translate("MainWindow", "Owner:"))
         self.search_file_button.setText(_translate("MainWindow", "Search"))
+        self.download_file_button.setText(_translate("MainWindow", "download file"))
+        self.choose_download_dir_button.setText(_translate("MainWindow", "choose download directory"))
 
 
 if __name__ == "__main__":
