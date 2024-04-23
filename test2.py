@@ -1,6 +1,5 @@
 import socket
 import struct
-
 from PyQt5.QtWidgets import QFileDialog
 from PyQ5_windows import Ui_file_window
 import protocol
@@ -11,13 +10,36 @@ import PyQt5
 import os
 
 
+def update_file(file_path):
+    print(file_path)
+    req_dir = {"req": "update", "file_path": file_path}
+    send_data(client_socket, req_dir, 1, "")
+    with open(file_path, "rb") as data:
+        print(data)
+        file = data.read()
+    send_data(client_socket, file, 2, file_path)
+    answer = recv_msg(client_socket)["msg"]
+    file_name = recv_msg(client_socket)["msg"]
+    return answer, file_name
+
+
 def download_file(file_path, download_path):
     req_dir = {"req": "download", "file_path": file_path}
     send_data(client_socket, req_dir, 1, "")
     file_msg = recv_msg(client_socket)
     file_path_dict = file_msg.get("file_path").split("/")
+    print(download_path + "/" + file_path_dict[-1])
+    if os.path.exists(download_path + "/" + file_path_dict[-1]):
+        try:
+            os.rename(download_path + "/" + file_path_dict[-1], download_path + "/" + file_path_dict[-1])
+            print("ok")
+        except OSError as e:
+            print("file is being used. to download close the file and retry")
+            return "file is being used"
     with open(download_path + "/" + file_path_dict[-1], 'wb') as file:
+        print("hej")
         file.write(file_msg.get("msg"))
+    return ""
 
 
 # need to send added files to the server and deal with responses appropriately
@@ -26,7 +48,7 @@ def ShowFileWindow(CurrentWindow, files):
     print(files)
     file_window = QtWidgets.QMainWindow()
     FileWindow_ui = PyQ5_windows.Ui_file_window_ver2()
-    FileWindow_ui.setupUi_file_window(file_window, add_file, search_by_criteria, download_file)
+    FileWindow_ui.setupUi_file_window(file_window, add_file, search_by_criteria, download_file, update_file)
     try:
         if len(files) > 0:
             for file in files:
@@ -50,7 +72,7 @@ def add_file():
     answer = recv_msg(client_socket)["msg"]
     file_name = recv_msg(client_socket)["msg"]
     print(answer)
-    return file_name, answer
+    return file_name, answer, file_path[0]
     # file_list.addItem(file_name)
 
 

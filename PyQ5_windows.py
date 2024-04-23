@@ -1,9 +1,10 @@
 import os
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QEvent
 from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import QMessageBox, QLineEdit, QPushButton, QFileDialog, QLabel, QCalendarWidget, QTableWidgetItem
+from PyQt5.QtWidgets import QMessageBox, QLineEdit, QPushButton, QFileDialog, QLabel, QCalendarWidget, QTableWidgetItem, \
+    QMenu, QAction
 from PyQt5.QtCore import QDate
 
 # need in the file window deal with all the sorts obviously deal with the listing of the files as well
@@ -533,7 +534,7 @@ class Ui_file_window(object):
         self.file_type_label.setText(_translate("MainWindow", "File Type:"))
         self.owner_label.setText(_translate("MainWindow", "Owner:"))
 class Ui_file_window_ver2(object):
-    def setupUi_file_window(self, MainWindow, add_file_call_back, search_by_criteria, download_file):
+    def setupUi_file_window(self, MainWindow, add_file_call_back, search_by_criteria, download_file, update_file_call_back):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(1124, 896)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
@@ -547,6 +548,8 @@ class Ui_file_window_ver2(object):
         self.file_tabel.setColumnWidth(1, 200)
         self.file_tabel.setColumnWidth(2, 200)
         self.file_tabel.setHorizontalHeaderLabels(["File Name", "Date Created", "File Owner"])
+        self.file_tabel.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.file_tabel.customContextMenuRequested.connect(lambda pos: self.show_context_menu(pos, download_file))
         self.search_file_line_edit = QtWidgets.QLineEdit(self.centralwidget)
         self.search_file_line_edit.setGeometry(QtCore.QRect(140, 30, 981, 31))
         self.search_file_line_edit.setObjectName("search_file_line_edit")
@@ -557,7 +560,7 @@ class Ui_file_window_ver2(object):
         self.label.setGeometry(QtCore.QRect(80, 10, 371, 21))
         self.label.setText("")
         self.label.setObjectName("label")
-        self.add_file_pushButton = QtWidgets.QPushButton(self.centralwidget, clicked=lambda: self.add_file(add_file_call_back))
+        self.add_file_pushButton = QtWidgets.QPushButton(self.centralwidget, clicked=lambda: self.add_file(add_file_call_back, update_file_call_back))
         self.add_file_pushButton.setGeometry(QtCore.QRect(0, 30, 131, 31))
         # self.add_file_pushButton.clicked.connect(self.add_file)
         icon = QtGui.QIcon()
@@ -566,15 +569,18 @@ class Ui_file_window_ver2(object):
         self.add_file_pushButton.setIconSize(QtCore.QSize(24, 24))
         self.add_file_pushButton.setObjectName("add_file_pushButton")
         self.search_file_button = QtWidgets.QPushButton(self.centralwidget, clicked= lambda: self.search(search_by_criteria))
-        self.search_file_button.setGeometry(QtCore.QRect(0, 71, 131, 31))
+        self.search_file_button.setGeometry(QtCore.QRect(0, 90, 131, 31))
         self.search_file_button.setObjectName("search_file_pushButton")
-        self.download_file_button =QtWidgets.QPushButton(self.centralwidget, clicked= lambda: self.download(download_file))
-        self.download_file_button.setGeometry(QtCore.QRect(0, 102, 131, 31))
-        self.download_file_button.setObjectName("download_file_button")
+        #self.download_file_button = QtWidgets.QPushButton(self.centralwidget, clicked= lambda: self.download(download_file))
+        #self.download_file_button.setGeometry(QtCore.QRect(0, 102, 131, 31))
+        #self.download_file_button.setObjectName("download_file_button")
         self.download_dir = os.path.expanduser("~/Downloads")
-        self.choose_download_dir_button = QtWidgets.QPushButton(self.centralwidget, clicked= lambda: self.choose_download_dir())
-        self.choose_download_dir_button.setGeometry(960, 90, 150, 31)
-        self.choose_download_dir_button.setObjectName("choose_download_dir_button")
+        self.download_dir_label = QtWidgets.QLabel(self.centralwidget)
+        self.download_dir_label.setGeometry(QtCore.QRect(500, 0, 400, 31))
+        self.download_dir_label.setObjectName("download_file_label")
+        # self.choose_download_dir_button = QtWidgets.QPushButton(self.centralwidget, clicked= lambda: self.choose_download_dir())
+        # self.choose_download_dir_button.setGeometry(960, 90, 150, 31)
+        # self.choose_download_dir_button.setObjectName("choose_download_dir_button")
         self.search_keyword_lineEdit = QtWidgets.QLineEdit(self.centralwidget)
         self.search_keyword_lineEdit.setGeometry(QtCore.QRect(140, 90, 181, 31))
         self.search_keyword_lineEdit.setObjectName("search_keyword_lineEdit")
@@ -627,6 +633,37 @@ class Ui_file_window_ver2(object):
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
+
+    def show_context_menu(self, pos, download_file_func):
+        # Create a QMenu instance
+        menu = QMenu(self.file_tabel)
+
+        # Create a QAction for the "Download File" option
+        download_action = QAction("Download File", self.file_tabel)
+        download_action.triggered.connect(lambda: self.download_selected_file(download_file_func))
+
+        # Add the action to the menu
+        menu.addAction(download_action)
+
+        # Show the context menu at the specified position
+        menu.exec_(self.file_tabel.mapToGlobal(pos))
+
+    def download_selected_file(self, download_file_func):
+        selected_items = self.file_tabel.selectedItems()
+        if selected_items:
+            print("hej 2")
+            selected_item = selected_items[0]
+            row = selected_item.row()
+            file_name = self.file_tabel.item(row, 0).text()
+            answer = download_file_func(file_name, self.download_dir)
+            if answer == "file is being used":
+                msg_box = QMessageBox()
+                msg_box.setWindowTitle("error")
+                msg_box.setText("File is being used. To download close it and retry")
+                msg_box.exec_()
+                return
+            os.startfile(self.download_dir)
+
     def download(self, download_file):
         selected_items = self.file_tabel.selectedItems()
         if len(selected_items) > 0:
@@ -643,6 +680,7 @@ class Ui_file_window_ver2(object):
     def choose_download_dir(self):
         print(self.download_dir)
         self.download_dir = QFileDialog.getExistingDirectory(None, "pick a folder", os.path.expanduser("~"))
+        self.download_dir_label.setText(f"downloading to: {self.download_dir}")
         print(self.download_dir)
 
 
@@ -715,18 +753,39 @@ class Ui_file_window_ver2(object):
 
         self.hide_custom_date_range_dialog()
 
-    def add_file(self, add_file_call_back):
-        self.file_name, answer = add_file_call_back()
-        if answer != "Saved File":
+    def add_file(self, add_file_call_back, update_file_call_back):
+        self.file_name, answer, file_path = add_file_call_back()
+        if answer != "Saved File" and answer != "file already exists":
             msg_box = QMessageBox()
             msg_box.setWindowTitle("Bomboclat")
             msg_box.setText(answer)
             msg_box.exec_()
             return
+        elif answer == "file already exists":
+            msg_box = QMessageBox()
+            msg_box.setWindowTitle("Update or not")
+            msg_box.setText("file already exist would you like to update")
+            msg_box.setStandardButtons(QMessageBox.No | QMessageBox.Yes)
+
+            button = msg_box.exec_()
+            if button == QMessageBox.Yes:
+                answer, self.file_name = update_file_call_back(file_path)
+                if answer != "Updated":
+                    msg_box = QMessageBox()
+                    msg_box.setWindowTitle("Bomboclat")
+                    msg_box.setText(answer)
+                    msg_box.exec_()
+                    return
+
+            else:
+                return
         self.file_tabel.clearContents()
         self.file_tabel.setRowCount(0)
         for item in self.file_name:
             self.add_file_to_list(item)
+
+    def msg_boxClicked(self):
+        pass
 
     def add_file_to_list(self, file):
         print(file)
@@ -748,8 +807,9 @@ class Ui_file_window_ver2(object):
         self.file_type_label.setText(_translate("MainWindow", "File Type:"))
         self.owner_label.setText(_translate("MainWindow", "Owner:"))
         self.search_file_button.setText(_translate("MainWindow", "Search"))
-        self.download_file_button.setText(_translate("MainWindow", "download file"))
-        self.choose_download_dir_button.setText(_translate("MainWindow", "choose download directory"))
+        # self.download_file_button.setText(_translate("MainWindow", "download file"))
+        self.download_dir_label.setText(_translate("MainWindow", f"downloading to: {self.download_dir}"))
+        # self.choose_download_dir_button.setText(_translate("MainWindow", "choose download directory"))
 
 
 if __name__ == "__main__":

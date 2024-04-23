@@ -1,19 +1,27 @@
 import socket
 import struct
 import threading
+import docx
 import protocol
 from threading import *
 import oracledb
 import hashlib
 import os
 
+
 socket_to_username = {}
 socket_to_user_id = {}
 
-
+# on Login screen display the right error. For example is password is wrong. Display "Wrong password"
+# NICE TO HAVE: The option of reset password
 # when wanting to save a file use f"{save_dirct}\\{username}" as it is the folder for each user
-# need to deal with received files from the client
 # need to deal with owner and keyword filter :)
+# Check the option of another owner with his own files
+# Create the admin screens
+# Fix the custom date range to display the dates and to allow redefine of it
+# Create a function for error massages
+
+
 def handle_client(conn, client_address):
     global function_name
     function_name = "handle_client"
@@ -41,6 +49,7 @@ def handle_client(conn, client_address):
                 send_data(conn, files, 1, "")
             else:
                 send_data(conn, error_msg, 1, "")
+                send_data(conn, files, 1, "")
         else:
             send_data(conn, "didn't enter log in or register", 1, "")
     while True:
@@ -67,8 +76,49 @@ def handle_client(conn, client_address):
                     print(data)
                     file = data.read()
                 send_data(conn, file, 2, file_path)
+            elif data["msg"]["req"] == "update":
+                print(data["msg"]["req"])
+                update_file(conn, cursor, connectiondb)
             elif data["msg"]["req"] == "ext_query":
                 send_files_by_criteria(data["msg"]["ext_query"], cursor, conn)
+
+
+def update_file(conn, cursor, connectiondb):
+    file_msg = recv_msg(conn)
+    print(file_msg["file_path"])
+    try:
+        file_path_dict = file_msg.get("file_path").split("/")
+        with open(save_dirct + "/" + socket_to_username.get(conn) + "/" + file_path_dict[-1], 'wb') as file:
+            content = ""
+            file.write(file_msg.get("msg"))
+        if file_path_dict[-1].split(".")[-1] == "txt":
+            with open(save_dirct + "/" + socket_to_username.get(conn) + "/" + file_path_dict[-1], encoding='UTF-8') as file_ext:
+                if os.path.exists(save_dirct + "/" + socket_to_username.get(conn) + "/" + file_path_dict[-1]):
+                    content = file_ext.read()
+                    print("File exists!")
+                else:
+                    print("File does not exist.")
+        elif file_path_dict[-1].split(".")[-1] == "docx":
+            content = getText(save_dirct + "/" + socket_to_username.get(conn) + "/" + file_path_dict[-1])
+        print(content)
+        cursor.execute("""UPDATE FILE_LIST_TBL
+                        SET FILE_TEXT = :content
+                        ,DATE_UPDATE = SYSDATE
+                        ,UPDATE_BY = :update_by
+                        WHERE FILE_PATH = :file_path """, content=content, file_path=(save_dirct + "/" + socket_to_username.get(conn) + "/" + file_path_dict[-1]), update_by=socket_to_user_id.get(conn))
+        connectiondb.commit()
+        cursor.execute("""SELECT FL.FILE_PATH,to_char(FL.DATE_CREATE,'dd/mm/yyyy hh24:mi'),UT.USER_NAME from info_manage.file_list_tbl fl,
+                                                    info_manage.USERS_TBL UT
+                                                    where fl.create_by = ut.user_id AND FL.CREATE_BY = :user_id""",
+                       (socket_to_user_id.get(conn),))
+        files = cursor.fetchall()
+        send_data(conn, "Updated", 1, "")
+        send_data(conn, files, 1, "")
+
+    except Exception as e:
+        print(e)
+        send_data(conn, str(e), 1, "")
+        send_data(conn, str(e), 1, "")
 
 
 def handle_files(conn, data, cursor, connectiondb):
@@ -83,6 +133,7 @@ def handle_files(conn, data, cursor, connectiondb):
             send_data(conn, "", 1, "")
             return
         with open(save_dirct + "/" + socket_to_username.get(conn) + "/" + file_path_dict[-1], 'wb') as file:
+            content = ""
             file.write(data.get("msg"))
             # need to fix, so it sends a response that it recived it
             cursor.execute(f"""INSERT INTO FILE_LIST_TBL(FILE_PATH,FILE_TYPE,CREATE_BY,UPDATE_BY)
@@ -93,9 +144,25 @@ def handle_files(conn, data, cursor, connectiondb):
                                             info_manage.USERS_TBL UT
                                             where fl.create_by = ut.user_id AND FL.CREATE_BY = :user_id""", (socket_to_user_id.get(conn),))
             files = cursor.fetchall()
-            send_data(conn, "Saved File", 1, "")
-            send_data(conn, files, 1, "")
+        if file_path_dict[-1].split(".")[-1] == "txt":
+            with open(save_dirct + "/" + socket_to_username.get(conn) + "/" + file_path_dict[-1], encoding='UTF-8') as file_ext:
+                if os.path.exists(save_dirct + "/" + socket_to_username.get(conn) + "/" + file_path_dict[-1]):
+                    content = file_ext.read()
+                    print("File exists!")
+                else:
+                    print("File does not exist.")
+        elif file_path_dict[-1].split(".")[-1] == "docx":
+            content = getText(save_dirct + "/" + socket_to_username.get(conn) + "/" + file_path_dict[-1])
+        print(content)
+        # sql error
+        cursor.execute(""" UPDATE FILE_LIST_TBL
+                        SET FILE_TEXT = :content
+                        WHERE FILE_PATH = :file_path """, content=content, file_path=(save_dirct + "/" + socket_to_username.get(conn) + "/" + file_path_dict[-1]))
+        connectiondb.commit()
+        send_data(conn, "Saved File", 1, "")
+        send_data(conn, files, 1, "")
     except Exception as e:
+        send_data(conn, str(e), 1, "")
         send_data(conn, str(e), 1, "")
         print(e)
 
@@ -198,50 +265,57 @@ def handle_login(conn, cursor, connectiondb):
     username = username_and_password.get("Username")
     password = username_and_password.get("Password")
     cursor.execute("SELECT PASSWORD_EXT FROM USERS_TBL WHERE USER_NAME = :username", (username, ))
-    if cursor.fetchone()[0] is None:
-        salt = None
-    else:
-        salt = cursor.fetchone()[0]
-    print(salt)
-    if salt == None:
+    salt_result = cursor.fetchone()
+    if salt_result[0] is None:
         try:
-            cursor.execute("SELECT COUNT(*) FROM USERS_TBL WHERE USER_NAME = :username AND PASSWORD = :password", (username, password))
+            cursor.execute("SELECT COUNT(*) FROM USERS_TBL WHERE USER_NAME = :username AND PASSWORD = :password",
+                           (username, password))
             result = cursor.fetchone()[0]
             cursor.execute(f"SELECT USER_ID FROM USERS_TBL WHERE USER_NAME = :username", (username,))
             user_id = cursor.fetchone()[0]
             if result == 0:
-                return False, "user does not exist in the system"
+                return False, "user does not exist in the system", []
             else:
                 socket_to_username[conn] = username
                 socket_to_user_id[conn] = user_id
                 cursor.execute("""SELECT FL.FILE_PATH,to_char(FL.DATE_CREATE,'dd/mm/yyyy hh24:mi'),UT.USER_NAME from info_manage.file_list_tbl fl,
-                                info_manage.USERS_TBL UT
-                                where fl.create_by = ut.user_id AND FL.CREATE_BY = :user_id""", (user_id, ))
+                                                info_manage.USERS_TBL UT
+                                                where fl.create_by = ut.user_id AND FL.CREATE_BY = :user_id""",
+                               (user_id,))
                 files = cursor.fetchall()
                 print(cursor.fetchall())
                 return True, "", files
         except oracledb.Error as error:
             error = str(error)
-            print("error at handle login " + error)
-            return False, error
+            print(f"failed at {function_name} {error}")
+            return False, error, ""
     else:
         try:
-            hashed_pass = hashlib.pbkdf2_hmac('sha256', password.encode(), bytes(salt), 100000)
+            salt = salt_result[0]
+            salt = salt.read()
+            hashed_pass = hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 100000)
             cursor.execute("SELECT COUNT(*) FROM USERS_TBL WHERE USER_NAME = :username AND PASSWORD = :password",
-                        (username, hashed_pass))
+                           (username, hashed_pass))
             result = cursor.fetchone()[0]
             cursor.execute(f"SELECT USER_ID FROM USERS_TBL WHERE USER_NAME = :username", (username,))
             user_id = cursor.fetchone()[0]
             if result == 0:
-                return False, "user does not exist in the system"
+                return False, "user does not exist in the system", []
             else:
                 socket_to_username[conn] = username
                 socket_to_user_id[conn] = user_id
-                return True, ""
+                cursor.execute("""SELECT FL.FILE_PATH,to_char(FL.DATE_CREATE,'dd/mm/yyyy hh24:mi'),UT.USER_NAME from info_manage.file_list_tbl fl,
+                                                info_manage.USERS_TBL UT
+                                                where fl.create_by = ut.user_id AND FL.CREATE_BY = :user_id""",
+                               (user_id,))
+                files = cursor.fetchall()
+                print(cursor.fetchall())
+                print("hej")
+                return True, "", files
         except oracledb.Error as error:
             error = str(error)
             print(f"failed at {function_name} {error}")
-            return False, error
+            return False, error, []
 
 
 
@@ -301,6 +375,14 @@ def is_valid_username(username):
     except Exception as e:
         print(f"failed at: {function_name} {e}")
         return False
+
+
+def getText(filename):
+    doc = docx.Document(filename)
+    fullText = []
+    for para in doc.paragraphs:
+        fullText.append(para.text)
+    return '\n'.join(fullText)
 
 
 save_dirct = "D:/Yonatan/INPUT_FILES_FOR_PROCESS"
