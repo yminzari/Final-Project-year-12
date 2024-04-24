@@ -204,7 +204,7 @@ class Ui_RegisterWindow(object):
             msg_box.setText(self.result)
             msg_box.exec_()
         else:
-            CallBackFileWindow(MainWindow)
+            CallBackFileWindow(MainWindow, [])
 
     def OpenLogInWindow(self, MainWindow, CallBackShowLogIn):
         CallBackShowLogIn(MainWindow)

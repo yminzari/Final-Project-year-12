@@ -221,6 +221,7 @@ def handle_register(conn, cursor, connectiondb):
     salt = os.urandom(32)
     hashed_pass = hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 100000)
     print(password)
+    print(hashed_pass)
     firstName = UserInformation.get("FirstName")
     lastName = UserInformation.get("LastName")
     if not is_valid_username(username):
@@ -264,50 +265,68 @@ def handle_login(conn, cursor, connectiondb):
     print(username_and_password)
     username = username_and_password.get("Username")
     password = username_and_password.get("Password")
-    cursor.execute("SELECT PASSWORD_EXT FROM USERS_TBL WHERE USER_NAME = :username", (username, ))
-    salt_result = cursor.fetchone()
-    if salt_result[0] is None:
+    # select password,nvl(to_char(password_ext),'EMPTY') salt, user_id , 1 as is_exists
+    # from info_manage.users_tbl where user_name = 'test'
+    cursor.execute("""select password,password_ext salt, user_id , 1 as is_exists
+from info_manage.users_tbl where user_name = :username""", (username, ))
+    user_info = cursor.fetchone()
+    print(user_info)
+    print(type(user_info))
+    # -- If user does not exist
+    if user_info is None:
+        return False, "user does not exist in the system", []
+    # cursor.execute("SELECT PASSWORD_EXT FROM USERS_TBL WHERE USER_NAME = :username", (username, ))
+    # salt_result = cursor.fetchone()
+    # -- If salt does not exist
+    if user_info[1] is None:
         try:
-            cursor.execute("SELECT COUNT(*) FROM USERS_TBL WHERE USER_NAME = :username AND PASSWORD = :password",
-                           (username, password))
-            result = cursor.fetchone()[0]
-            cursor.execute(f"SELECT USER_ID FROM USERS_TBL WHERE USER_NAME = :username", (username,))
-            user_id = cursor.fetchone()[0]
-            if result == 0:
-                return False, "user does not exist in the system", []
+            # cursor.execute("SELECT COUNT(*) FROM USERS_TBL WHERE USER_NAME = :username AND PASSWORD = :password",
+            #               (username, password))
+            # result = cursor.fetchone()[0]
+            # cursor.execute(f"SELECT USER_ID FROM USERS_TBL WHERE USER_NAME = :username", (username,))
+            # user_id = cursor.fetchone()[0]
+            # if result == 0:
+            #    return False, "Inputted incorrect password", []
+            # -- If password does not match the username
+            if user_info[0] != password:
+                return False, "Invalid password", []
             else:
                 socket_to_username[conn] = username
-                socket_to_user_id[conn] = user_id
+                socket_to_user_id[conn] = user_info[2]
                 cursor.execute("""SELECT FL.FILE_PATH,to_char(FL.DATE_CREATE,'dd/mm/yyyy hh24:mi'),UT.USER_NAME from info_manage.file_list_tbl fl,
                                                 info_manage.USERS_TBL UT
                                                 where fl.create_by = ut.user_id AND FL.CREATE_BY = :user_id""",
-                               (user_id,))
+                               (user_info[2],))
                 files = cursor.fetchall()
                 print(cursor.fetchall())
                 return True, "", files
         except oracledb.Error as error:
             error = str(error)
             print(f"failed at {function_name} {error}")
-            return False, error, ""
+            return False, error, []
+    # -- If salt does exist
     else:
         try:
-            salt = salt_result[0]
-            salt = salt.read()
+            salt = user_info[1].read()
+            print(salt)
             hashed_pass = hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 100000)
-            cursor.execute("SELECT COUNT(*) FROM USERS_TBL WHERE USER_NAME = :username AND PASSWORD = :password",
-                           (username, hashed_pass))
-            result = cursor.fetchone()[0]
-            cursor.execute(f"SELECT USER_ID FROM USERS_TBL WHERE USER_NAME = :username", (username,))
-            user_id = cursor.fetchone()[0]
-            if result == 0:
-                return False, "user does not exist in the system", []
+            print(hashed_pass.hex())
+            # cursor.execute("SELECT COUNT(*) FROM USERS_TBL WHERE USER_NAME = :username AND PASSWORD = :password",
+            #                (username, hashed_pass))
+            # result = cursor.fetchone()[0]
+            # cursor.execute(f"SELECT USER_ID FROM USERS_TBL WHERE USER_NAME = :username", (username,))
+            # user_id = cursor.fetchone()[0]
+            # if result == 0:
+            #     return False, "user does not exist in the system", []
+            if hashed_pass.hex().upper() != user_info[0]:
+                return False, "Invalid password", []
             else:
                 socket_to_username[conn] = username
-                socket_to_user_id[conn] = user_id
+                socket_to_user_id[conn] = user_info[2]
                 cursor.execute("""SELECT FL.FILE_PATH,to_char(FL.DATE_CREATE,'dd/mm/yyyy hh24:mi'),UT.USER_NAME from info_manage.file_list_tbl fl,
                                                 info_manage.USERS_TBL UT
                                                 where fl.create_by = ut.user_id AND FL.CREATE_BY = :user_id""",
-                               (user_id,))
+                               (user_info[2],))
                 files = cursor.fetchall()
                 print(cursor.fetchall())
                 print("hej")
