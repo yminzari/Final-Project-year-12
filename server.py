@@ -7,19 +7,22 @@ from threading import *
 import oracledb
 import hashlib
 import os
+import fitz
+import pandas as pd
 
 
 socket_to_username = {}
 socket_to_user_id = {}
 
-# on Login screen display the right error. For example is password is wrong. Display "Wrong password"
+# on Login screen display the right error. For example is password is wrong. Display "Wrong password" Done
 # NICE TO HAVE: The option of reset password
 # when wanting to save a file use f"{save_dirct}\\{username}" as it is the folder for each user
 # need to deal with owner and keyword filter :)
 # Check the option of another owner with his own files
 # Create the admin screens
-# Fix the custom date range to display the dates and to allow redefine of it
+# Fix the custom date range to display the dates and to allow redefine of it Done
 # Create a function for error massages
+# Add pdf and excel files Done
 
 
 def handle_client(conn, client_address):
@@ -100,6 +103,11 @@ def update_file(conn, cursor, connectiondb):
                     print("File does not exist.")
         elif file_path_dict[-1].split(".")[-1] == "docx":
             content = getText(save_dirct + "/" + socket_to_username.get(conn) + "/" + file_path_dict[-1])
+        elif file_path_dict[-1].split(".")[-1] == "pdf":
+            doc = fitz.open(save_dirct + "/" + socket_to_username.get(conn) + "/" + file_path_dict[-1])
+            for page in doc:
+                content += page.get_text()
+            doc.close()
         print(content)
         cursor.execute("""UPDATE FILE_LIST_TBL
                         SET FILE_TEXT = :content
@@ -153,6 +161,14 @@ def handle_files(conn, data, cursor, connectiondb):
                     print("File does not exist.")
         elif file_path_dict[-1].split(".")[-1] == "docx":
             content = getText(save_dirct + "/" + socket_to_username.get(conn) + "/" + file_path_dict[-1])
+        elif file_path_dict[-1].split(".")[-1] == "pdf":
+            doc = fitz.open(save_dirct + "/" + socket_to_username.get(conn) + "/" + file_path_dict[-1])
+
+            for page in doc:
+                content += page.get_text()
+            doc.close()
+        elif file_path_dict[-1].split(".")[-1] == "xlsx":
+            content = getExcelText(save_dirct + "/" + socket_to_username.get(conn) + "/" + file_path_dict[-1])
         print(content)
         # sql error
         cursor.execute(""" UPDATE FILE_LIST_TBL
@@ -402,6 +418,26 @@ def getText(filename):
     for para in doc.paragraphs:
         fullText.append(para.text)
     return '\n'.join(fullText)
+
+
+def getExcelText(filename):
+    # Read the Excel file into a DataFrame
+    excel_file = filename # Replace with your Excel file path
+    df = pd.read_excel(excel_file)
+
+    # Initialize an empty list to store text
+    all_text = []
+
+    # Iterate through each cell in the DataFrame
+    for column in df.columns:
+        for cell in df[column]:
+            # Check if the cell contains text
+            if isinstance(cell, str):
+                all_text.append(cell)
+
+    # Join all the extracted text into a single string
+    all_text_combined = '\n'.join(all_text)
+    return all_text_combined
 
 
 save_dirct = "D:/Yonatan/INPUT_FILES_FOR_PROCESS"

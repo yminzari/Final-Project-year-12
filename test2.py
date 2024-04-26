@@ -60,7 +60,7 @@ def ShowFileWindow(CurrentWindow, files):
 
 
 def add_file():
-    file_path = QFileDialog.getOpenFileName(None, "upload a file", os.path.expanduser("~"), "All (*.txt *.docx) ;;Docx (*.docx);; text (*.txt);")
+    file_path = QFileDialog.getOpenFileName(None, "upload a file", os.path.expanduser("~"), "All (*.txt *.docx *.pdf *.xlsx) ;;Docx (*.docx);; text (*.txt);; PDF (*.pdf);; Excel (*.xlsx);")
     if file_path[0] == "":
         return "", "no file was selected"
     print(file_path[0])

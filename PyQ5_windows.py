@@ -598,7 +598,7 @@ class Ui_file_window_ver2(object):
         self.file_type_comboBox.setGeometry(QtCore.QRect(540, 90, 191, 31))
         self.file_type_comboBox.setObjectName("file_type_comboBox")
         self.file_type_comboBox.addItem("All")
-        self.file_type_comboBox.addItems(["txt", "docx"])
+        self.file_type_comboBox.addItems(["txt", "docx", "pdf", "xlsx"])
         self.owner_comboBox = QtWidgets.QComboBox(self.centralwidget)
         self.owner_comboBox.setGeometry(QtCore.QRect(750, 90, 191, 31))
         self.owner_comboBox.setObjectName("owner_comboBox")
@@ -619,7 +619,7 @@ class Ui_file_window_ver2(object):
         self.edited_date_comboBox.addItem("All")
         self.edited_date_comboBox.addItems(
             ["today", "the last seven days", "the last thirty days", "this year", "custom date range"])
-        self.edited_date_comboBox.currentIndexChanged.connect(self.handle_date_range_selection)
+        self.edited_date_comboBox.activated.connect(self.handle_date_range_selection)
         self.custom_date_range_widget = None  # Initialize the custom date range widget
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
@@ -701,10 +701,15 @@ class Ui_file_window_ver2(object):
             self.add_file_to_list(item)
 
     def handle_date_range_selection(self, index):
-        if self.edited_date_comboBox.currentText() == "custom date range":
-            self.show_custom_date_range_dialog()
+        if index == self.edited_date_comboBox.count() - 1:  # Check if the "custom date range" option is selected
+            if self.custom_date_range_widget is None or not self.custom_date_range_widget.isVisible():
+                self.show_custom_date_range_dialog()
+            else:
+                self.hide_custom_date_range_dialog()
         else:
             self.hide_custom_date_range_dialog()
+            self.selected_start_date = None
+            self.selected_end_date = None
 
     def show_custom_date_range_dialog(self):
         self.custom_date_range_dialog = QtWidgets.QDialog(self.centralwidget)
@@ -748,6 +753,18 @@ class Ui_file_window_ver2(object):
     def handle_custom_date_range_confirmation(self, start_date_edit, end_date_edit):
         start_date = start_date_edit.date()
         end_date = end_date_edit.date()
+        if start_date > end_date:
+            msg_box = QMessageBox()
+            msg_box.setWindowTitle("date error")
+            msg_box.setText("Invalid date range")
+            msg_box.exec_()
+            return
+        self.selected_start_date = start_date
+        self.selected_end_date = end_date
+
+        # Update the edited_date_comboBox to display the selected date range
+        date_range_text = f"{start_date.toString('MMM d, yyyy')} - {end_date.toString('MMM d, yyyy')}"
+        self.edited_date_comboBox.setItemText(self.edited_date_comboBox.count() - 1, date_range_text)
 
         print(f"Selected date range: {start_date.toString()} - {end_date.toString()}")
 
@@ -784,8 +801,6 @@ class Ui_file_window_ver2(object):
         for item in self.file_name:
             self.add_file_to_list(item)
 
-    def msg_boxClicked(self):
-        pass
 
     def add_file_to_list(self, file):
         print(file)
