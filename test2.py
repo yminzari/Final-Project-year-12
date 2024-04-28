@@ -76,8 +76,35 @@ def add_file():
     # file_list.addItem(file_name)
 
 
-def search_by_criteria(search, file_type, date, start_date, end_date):
+def search_by_criteria(search, file_type, date, start_date, end_date,  exact_word, wildcard_word, and_words, or_words):
     ext_query = ""
+    and_quary = ""
+    or_quary = ""
+    if exact_word != "":
+        exact_word.replace("-", "%")
+        ext_query += f"and contains(file_text,'{exact_word}') > 0"
+    if wildcard_word != "":
+        wildcard_word.replace("-", "%")
+        # wildcard_word.replace(" ", "%")
+        ext_query += f"and contains(file_text,'%{wildcard_word}%') > 0"
+    for word in and_words:
+        word.replace("-", "%")
+        if word != "" and and_quary == "":
+            and_quary += f"and contains(file_text,'%{word}%"
+        elif word != "" and and_quary != "":
+            and_quary += f" and %{word}%"
+    if and_quary != "":
+        and_quary += "') > 0"
+    ext_query += and_quary
+    for word in or_words:
+        word.replace("-", "%")
+        if word != "" and or_quary == "":
+            or_quary += f"and contains(file_text,'%{word}%"
+        elif word != "" and or_quary != "":
+            or_quary += f" or %{word}%"
+    if or_quary != "":
+        or_quary += "') > 0"
+    ext_query += or_quary
     if search != "":
         ext_query = f"and (file_path like '%{search}%')"
     if file_type != "All":

@@ -4,7 +4,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt, QEvent
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QMessageBox, QLineEdit, QPushButton, QFileDialog, QLabel, QCalendarWidget, QTableWidgetItem, \
-    QMenu, QAction
+    QMenu, QAction, QDialog, QVBoxLayout, QHBoxLayout
 from PyQt5.QtCore import QDate
 
 # need in the file window deal with all the sorts obviously deal with the listing of the files as well
@@ -571,6 +571,10 @@ class Ui_file_window_ver2(object):
         self.search_file_button = QtWidgets.QPushButton(self.centralwidget, clicked= lambda: self.search(search_by_criteria))
         self.search_file_button.setGeometry(QtCore.QRect(0, 90, 131, 31))
         self.search_file_button.setObjectName("search_file_pushButton")
+        self.exact_word = ""
+        self.wildcard_word = ""
+        self.multi_words_or = []
+        self.multi_words_and = []
         #self.download_file_button = QtWidgets.QPushButton(self.centralwidget, clicked= lambda: self.download(download_file))
         #self.download_file_button.setGeometry(QtCore.QRect(0, 102, 131, 31))
         #self.download_file_button.setObjectName("download_file_button")
@@ -581,13 +585,14 @@ class Ui_file_window_ver2(object):
         # self.choose_download_dir_button = QtWidgets.QPushButton(self.centralwidget, clicked= lambda: self.choose_download_dir())
         # self.choose_download_dir_button.setGeometry(960, 90, 150, 31)
         # self.choose_download_dir_button.setObjectName("choose_download_dir_button")
-        self.search_keyword_lineEdit = QtWidgets.QLineEdit(self.centralwidget)
-        self.search_keyword_lineEdit.setGeometry(QtCore.QRect(140, 90, 181, 31))
-        self.search_keyword_lineEdit.setObjectName("search_keyword_lineEdit")
-        self.search_keyword_lable = QtWidgets.QLabel(self.centralwidget)
-        self.search_keyword_lable.setGeometry(QtCore.QRect(140, 70, 371, 21))
-        self.search_keyword_lable.setText("Enter Keyword to search: ")
-        self.search_keyword_lable.setObjectName("search_keyword_lable")
+        self.search_keyword_Button = QtWidgets.QPushButton(self.centralwidget)
+        self.search_keyword_Button.setGeometry(QtCore.QRect(140, 90, 181, 31))
+        self.search_keyword_Button.setObjectName("search_keyword_Button")
+        self.search_keyword_Button.clicked.connect(self.show_keyword_search_dialog)
+        # self.search_keyword_lable = QtWidgets.QLabel(self.centralwidget)
+        # self.search_keyword_lable.setGeometry(QtCore.QRect(140, 70, 371, 21))
+        # self.search_keyword_lable.setText("Enter Keyword to search: ")
+        # self.search_keyword_lable.setObjectName("search_keyword_lable")
         self.edited_date_comboBox = QtWidgets.QComboBox(self.centralwidget)
         self.edited_date_comboBox.setGeometry(QtCore.QRect(340, 90, 181, 31))
         self.edited_date_comboBox.setCurrentText("")
@@ -633,6 +638,27 @@ class Ui_file_window_ver2(object):
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
+    def show_keyword_search_dialog(self):
+        self.keyword_search_dialog = KeywordSearchDialog(self.centralwidget)
+        self.keyword_search_dialog.accepted.connect(self.handle_keyword_search)
+        self.keyword_search_dialog.rejected.connect(self.init_KeywordSearchDialog)
+        self.keyword_search_dialog.exec_()
+
+    def handle_keyword_search(self):
+        self.exact_word = self.keyword_search_dialog.exact_word_edit.text()
+        self.wildcard_word = self.keyword_search_dialog.wildcard_word_edit.text()
+        self.multi_words_and = [word.text() for word in self.keyword_search_dialog.multi_word_edits]
+        self.multi_words_or = [word.text() for word in self.keyword_search_dialog.or_word_edits]
+        self.search_keyword_Button.setText("inputted keyword")
+
+        # Perform the search based on the entered values
+        print("Exact word:", self.exact_word)
+        print("Wildcard word:", self.wildcard_word)
+        print("Multiple words and:", self.multi_words_and)
+        print("Multiple words or:", self.multi_words_or)
+
+        # Call the search_by_criteria function with the appropriate arguments
+        # search_by_criteria(exact_word, wildcard_word, multi_words, ...)
 
     def show_context_menu(self, pos, download_file_func):
         # Create a QMenu instance
@@ -670,7 +696,6 @@ class Ui_file_window_ver2(object):
             selected_item = selected_items[0]
             row = selected_item.row()
             column = selected_item.column()
-
             if column == 0:  # Check if selected item is from the correct column
                 item_text = selected_item.text()
                 download_file(item_text, self.download_dir)
@@ -688,17 +713,29 @@ class Ui_file_window_ver2(object):
         search = self.search_file_line_edit.text()
         file_type = self.file_type_comboBox.currentText()
         date = self.edited_date_comboBox.currentText()
+        exact_word = self.exact_word
+        wildcard_word = self.wildcard_word
+        and_words = self.multi_words_and
+        or_words = self.multi_words_or
         if date == "custom date range":
             start_date = self.start_date_edit.text()
             end_date = self.end_date_edit.text()
         else:
             start_date = ""
             end_date = ""
-        files = search_by_criteria(search, file_type, date, start_date, end_date)
+        files = search_by_criteria(search, file_type, date, start_date, end_date, exact_word, wildcard_word, and_words, or_words)
+        self.init_KeywordSearchDialog()
         self.file_tabel.clearContents()
         self.file_tabel.setRowCount(0)
         for item in files:
             self.add_file_to_list(item)
+
+    def init_KeywordSearchDialog(self):
+        self.search_keyword_Button.setText("Search by keywords")
+        self.exact_word = ""
+        self.wildcard_word = ""
+        self.multi_words_or = []
+        self.multi_words_and = []
 
     def handle_date_range_selection(self, index):
         if index == self.edited_date_comboBox.count() - 1:  # Check if the "custom date range" option is selected
@@ -707,7 +744,7 @@ class Ui_file_window_ver2(object):
             else:
                 self.hide_custom_date_range_dialog()
         else:
-            self.hide_custom_date_range_dialog()
+            # self.hide_custom_date_range_dialog()
             self.selected_start_date = None
             self.selected_end_date = None
 
@@ -817,7 +854,7 @@ class Ui_file_window_ver2(object):
         MainWindow.setWindowTitle(_translate("MainWindow", "file_window"))
         self.search_file_line_edit.setText(_translate("MainWindow", ""))
         self.add_file_pushButton.setText(_translate("MainWindow", "Add File"))
-        self.search_keyword_lineEdit.setText(_translate("MainWindow", ""))
+        self.search_keyword_Button.setText(_translate("MainWindow", "Search by keywords"))
         self.edit_date_label.setText(_translate("MainWindow", "Edited Date:"))
         self.file_type_label.setText(_translate("MainWindow", "File Type:"))
         self.owner_label.setText(_translate("MainWindow", "Owner:"))
@@ -825,6 +862,96 @@ class Ui_file_window_ver2(object):
         # self.download_file_button.setText(_translate("MainWindow", "download file"))
         self.download_dir_label.setText(_translate("MainWindow", f"downloading to: {self.download_dir}"))
         # self.choose_download_dir_button.setText(_translate("MainWindow", "choose download directory"))
+
+
+class KeywordSearchDialog(QDialog):
+    def __init__(self, parent=None):
+        super(KeywordSearchDialog, self).__init__(parent)
+        self.setWindowTitle("Keyword Search")
+        self.setModal(True)
+
+        layout = QVBoxLayout(self)
+
+        # 1. Exact Word
+        exact_word_layout = QVBoxLayout()
+        self.exact_word_label = QLabel("1. Search for an exact word match.", self)
+        self.exact_word_edit = QLineEdit(self)
+        self.exact_word_edit.setPlaceholderText("Enter an exact word to search")
+        self.exact_word_edit.textChanged.connect(self.handle_text_changed)
+        exact_word_layout.addWidget(self.exact_word_label)
+        exact_word_layout.addWidget(self.exact_word_edit)
+        layout.addLayout(exact_word_layout)
+
+        # 2. Wildcard Word
+        wildcard_word_layout = QVBoxLayout()
+        # self.wildcard_word_label = QLabel("2. Search for words containing the specified pattern. Use '%' as a wildcard character.", self)
+        self.wildcard_word_label = QLabel("2. Search for words containing the specified pattern.", self)
+        self.wildcard_word_edit = QLineEdit(self)
+        self.wildcard_word_edit.setPlaceholderText("Enter a word or a part of a word")
+        # self.wildcard_word_edit.setPlaceholderText("Enter a word with wildcards (e.g., '%word%')")
+        self.wildcard_word_edit.textChanged.connect(self.handle_text_changed)
+        wildcard_word_layout.addWidget(self.wildcard_word_label)
+        wildcard_word_layout.addWidget(self.wildcard_word_edit)
+        layout.addLayout(wildcard_word_layout)
+
+        # 3. AND Condition
+        self.multi_word_layout = QHBoxLayout()
+        self.multi_word_label = QLabel("3. Search for documents containing all of the specified words.", self)
+        self.multi_word_edits = [QLineEdit(self) for _ in range(3)]
+        for i, line_edit in enumerate(self.multi_word_edits):
+            line_edit.setPlaceholderText(f"Enter a word {i + 1} or a part of a word")
+            line_edit.textChanged.connect(self.handle_text_changed)
+            self.multi_word_layout.addWidget(line_edit)
+        layout.addWidget(self.multi_word_label)
+        layout.addLayout(self.multi_word_layout)
+
+        # 4. OR Condition
+        self.or_word_layout = QHBoxLayout()
+        self.or_word_label = QLabel("4. Search for documents containing any of the specified words.", self)
+        self.or_word_edits = [QLineEdit(self) for _ in range(3)]
+        for i, line_edit in enumerate(self.or_word_edits):
+            line_edit.setPlaceholderText(f"Enter a word {i + 1} or a part of a word")
+            line_edit.textChanged.connect(self.handle_text_changed)
+            self.or_word_layout.addWidget(line_edit)
+        layout.addWidget(self.or_word_label)
+        layout.addLayout(self.or_word_layout)
+
+        button_layout = QHBoxLayout()
+        self.search_button = QPushButton("Ok", self)
+        self.cancel_button = QPushButton("Cancel", self)
+        button_layout.addWidget(self.search_button)
+        button_layout.addWidget(self.cancel_button)
+        layout.addLayout(button_layout)
+
+        self.search_button.clicked.connect(self.accept)
+        self.cancel_button.clicked.connect(self.reject)
+
+        self.line_edits = [self.exact_word_edit, self.wildcard_word_edit] + self.multi_word_edits + self.or_word_edits
+
+
+    def handle_text_changed(self, text):
+        sender = self.sender()
+        in_group = False
+
+        # Check if the sender is in any group
+        for group in [self.multi_word_edits, self.or_word_edits]:
+            if sender in group:
+                in_group = True
+                break
+
+        # If the sender is in a group
+        if in_group:
+            # Check if any line edit within the group has text
+            group_has_text = any(edit.text().strip() != '' for edit in group)
+            for line_edit in self.line_edits:
+                # Disable line edits outside the group if any line edit within the group has text
+                if line_edit not in group:
+                    line_edit.setEnabled(not group_has_text)
+        else:
+            # If the sender is not in a group, disable line edits outside the group except sender
+            for line_edit in self.line_edits:
+                if line_edit != sender and all(edit.text().strip() == '' for edit in self.line_edits if edit != sender):
+                    line_edit.setEnabled(not text)
 
 
 if __name__ == "__main__":

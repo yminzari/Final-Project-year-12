@@ -17,7 +17,8 @@ socket_to_user_id = {}
 # on Login screen display the right error. For example is password is wrong. Display "Wrong password" Done
 # NICE TO HAVE: The option of reset password
 # when wanting to save a file use f"{save_dirct}\\{username}" as it is the folder for each user
-# need to deal with owner and keyword filter :)
+# Deal with keyword search Done
+# Deal with owner sort
 # Check the option of another owner with his own files
 # Create the admin screens
 # Fix the custom date range to display the dates and to allow redefine of it Done
