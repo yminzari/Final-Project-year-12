@@ -174,7 +174,8 @@ def Enter(Username:PyQt5.QtWidgets.QLineEdit, FirstName:PyQt5.QtWidgets.QLineEdi
     elif ClassName == "LogIn":
         RegisterOrLogIn = "2"
         UserInformation = {"Username": Username.text(), "Password": Password_LineEdit.text()}
-        send_data(client_socket, RegisterOrLogIn, 1, "")
+        # send_data_encrypt(client_socket, "hello world", 1, "", aes_cipher)
+        send_data_encrypt(client_socket, RegisterOrLogIn, 1, "", aes_cipher)
         data = UserInformation
         send_data(client_socket, data, 1, "")
         data_recv = recv_msg(client_socket)
@@ -187,9 +188,13 @@ def Enter(Username:PyQt5.QtWidgets.QLineEdit, FirstName:PyQt5.QtWidgets.QLineEdi
 
 def send_data(conn, data, operation, file_to_send):
     if operation == 1:
+        print(data)
         data = protocol.create_string_header(data)
         length = len(data)
+        print(length)
+        print(data)
         packed_length = struct.pack('>I', length)
+        print(packed_length)
         # Send the packed length over the socket
         conn.sendall(packed_length)
         conn.sendall(data)
@@ -211,13 +216,13 @@ def send_data_encrypt(conn, data, operation, file_to_send, aes_cipher):
     try:
         if operation == 1:
             data = protocol.create_string_header(data)
+            print(data)
+            data = aes_cipher.encrypt(data)
             length = len(data)
             print(length)
             packed_length = struct.pack('>I', length)
-            packed_length = aes_cipher.encrypt(packed_length)
             print(packed_length)
-            data = aes_cipher.encrypt(data)
-            print(data)
+
             # Send the packed length over the socket
             conn.sendall(packed_length)
             conn.sendall(data)
@@ -291,6 +296,8 @@ client_socket.connect((host, port))
 def main():
     global LogInOrRegister
     aes_cipher = first_connection()
+    print(aes_cipher.iv)
+    print(aes_cipher.key)
     app = QtWidgets.QApplication(sys.argv)
     MainWindow = QtWidgets.QMainWindow()
     LogInOrRegisterui = LogInOrRegister

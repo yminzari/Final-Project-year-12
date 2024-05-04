@@ -1,22 +1,32 @@
-import pandas as pd
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
+import secrets
 
-# Read the Excel file into a DataFrame
-excel_file = "C:\\Users\\yminz\\Downloads\\דוח פיצול מרץ 2024.xlsx"  # Replace with your Excel file path
-df = pd.read_excel(excel_file)
+class AESCipher:
+    def __init__(self, key, iv):
+        self.key = key
+        self.iv = iv
 
-# Initialize an empty list to store text
-all_text = []
+    def encrypt(self, message):
+        aes_cipher = AES.new(self.key, AES.MODE_CFB, self.iv)
+        padded_plaintext = pad(message.encode(), AES.block_size)
+        encrypted_message = aes_cipher.encrypt(padded_plaintext)
+        return encrypted_message
 
-# Iterate through each cell in the DataFrame
-for column in df.columns:
-    for cell in df[column]:
-        # Check if the cell contains text
-        if isinstance(cell, str):
-            all_text.append(cell)
+    def decrypt(self, encrypted_message):
+        aes_cipher = AES.new(self.key, AES.MODE_CFB, self.iv)
+        decrypted_data = aes_cipher.decrypt(encrypted_message)
+        # Note: We don't decode here because we're expecting unpadded bytes
+        return decrypted_data
 
-# Join all the extracted text into a single string
-all_text_combined = '\n'.join(all_text)
+# Example usage:
+# Generate a random AES key with the appropriate length (e.g., 16 bytes for AES-128)
+key = secrets.token_bytes(16)  # Change the argument to 24 or 32 for AES-192 or AES-256
 
-# Print or use the extracted text as needed
-print(all_text_combined)
-
+# Use this key for encryption
+iv = secrets.token_bytes(16)
+cipher = AESCipher(key, iv)
+encrypted = cipher.encrypt("Secret message")
+print("Encrypted:", encrypted)
+decrypted = cipher.decrypt(encrypted)
+print("Decrypted:", decrypted.decode())  # Decode the decrypted bytes to get the string

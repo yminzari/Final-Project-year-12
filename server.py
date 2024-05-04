@@ -41,7 +41,14 @@ def handle_client(conn, client_address):
     cursor.execute('select 1 from dual')
     is_ok = False
     while is_ok is False:
-        data = recv_msg(conn)
+        #data = recv_msg_encrypt(conn, aes_cipher)
+        #print(data)
+        #data = protocol.recvall(conn, 45)
+        #print(data)
+        #data = aes_cipher.decrypt(data)
+        #print(protocol.parse_header(data))
+        #print("hej")
+        data = recv_msg_encrypt(conn, aes_cipher)
         print(data.get("msg"))
         if data.get("msg") == "error" or data.get("msg") == "exit":
             print("exiting")
@@ -238,14 +245,14 @@ def recv_msg_encrypt(conn, aes_cipher):
     function_name = "recv_msg_encrypt"
     try:
         data_size = protocol.recvall(conn, 4)
-        data_size = aes_cipher.decrypt(data_size)
-        print(data_size)
         length = struct.unpack('>I', data_size)[0]
+        print(length)
         data_recv = protocol.recvall(conn, length)
-        print(data_recv)
         data_recv = aes_cipher.decrypt(data_recv)
+        print(data_recv)
         #   lengthdict = len(protocol.parse_header(data_recv))
         data_recv = protocol.parse_header(data_recv)
+        print(data_recv)
         return data_recv
     except Exception as e:
         print(f"failed at {function_name} {e}")
@@ -260,6 +267,7 @@ def recv_msg(conn):
         data_size = protocol.recvall(conn, 4)
         print(data_size)
         length = struct.unpack('>I', data_size)[0]
+        print(length)
         data_recv = protocol.recvall(conn, length)
         print(data_recv)
         #   lengthdict = len(protocol.parse_header(data_recv))

@@ -11,18 +11,23 @@ class AESCipher:
         self.iv = iv
 
     def encrypt(self, message):
-        aes_cipher = AES.new(self.key, AES.MODE_CBC, self.iv)
-        padded_plaintext = pad(message, AES.block_size)
-        encrypted_message = aes_cipher.encrypt(padded_plaintext)
-        return encrypted_message
-
+        try:
+            aes_cipher = AES.new(self.key, AES.MODE_CFB, self.iv)
+            padded_plaintext = pad(message, AES.block_size)
+            encrypted_message = aes_cipher.encrypt(padded_plaintext)
+            return encrypted_message
+        except Exception as e:
+            print(e)
 
     def decrypt(self, encrypted_message):
-        aes_cipher = AES.new(self.key, AES.MODE_CBC, self.iv)
-        decrypted_data = aes_cipher.decrypt(encrypted_message)
-        plaintext = unpad(decrypted_data, AES.block_size)
-        return plaintext
-
+        try:
+            aes_cipher = AES.new(self.key, AES.MODE_CFB, self.iv)
+            decrypted_data = aes_cipher.decrypt(encrypted_message)
+            decrypted_data = unpad(decrypted_data, AES.block_size)
+            # Note: We don't decode here because we're expecting unpadded bytes
+            return decrypted_data
+        except Exception as e:
+            print(e)
 
 
 def recvall(sock, size):
