@@ -10,20 +10,24 @@ from PyQt5.QtCore import QDate
 # need in the file window deal with all the sorts obviously deal with the listing of the files as well
 class Ui_LogInOrRegister(object):
 
-    def OpenLogInWindow(self, MainWindow, CallBackShowLogIn):
-        CallBackShowLogIn(MainWindow)
+    def OpenLogInWindow(self, MainWindow, CallBackShowLogIn, aes_cipher):
+        CallBackShowLogIn(MainWindow, aes_cipher)
 
-    def OpenRegistrtWindow(self, MainWindow, CallBackShowRegister):
-        CallBackShowRegister(MainWindow)
+    def OpenRegistrtWindow(self, MainWindow, CallBackShowRegister, aes_cipher):
+        CallBackShowRegister(MainWindow, aes_cipher)
 
-    def setupUi(self, MainWindow, CallBackShowRegister, CallBackShowLogIn):
+    def setupUi(self, MainWindow, CallBackShowRegister, CallBackShowLogIn,exit_call_back, aes_cipher):
         self.MainWindow = MainWindow
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(804, 609)
         MainWindow.setStyleSheet("background-color: rgb(236, 243, 244);")
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
-        self.LogInButton = QtWidgets.QPushButton(self.centralwidget, clicked= lambda: self.OpenLogInWindow(MainWindow, CallBackShowLogIn))
+        self.exit_button = QtWidgets.QPushButton(self.centralwidget)
+        self.exit_button.setGeometry(QtCore.QRect(MainWindow.width() - 100, MainWindow.height() - 50, 80, 30))
+        self.exit_button.setText("Exit")
+        self.exit_button.clicked.connect(lambda: self.handle_exit(exit_call_back, aes_cipher))
+        self.LogInButton = QtWidgets.QPushButton(self.centralwidget, clicked= lambda: self.OpenLogInWindow(MainWindow, CallBackShowLogIn, aes_cipher))
         self.LogInButton.setGeometry(QtCore.QRect(280, 300, 241, 91))
         font = QtGui.QFont()
         font.setPointSize(16)
@@ -39,7 +43,7 @@ class Ui_LogInOrRegister(object):
 "background-color: #4385F7;\n"
 "}")
         self.LogInButton.setObjectName("pushButton_2")
-        self.RegisterButton = QtWidgets.QPushButton(self.centralwidget, clicked= lambda: self.OpenRegistrtWindow(MainWindow, CallBackShowRegister))
+        self.RegisterButton = QtWidgets.QPushButton(self.centralwidget, clicked= lambda: self.OpenRegistrtWindow(MainWindow, CallBackShowRegister, aes_cipher))
         self.RegisterButton.setGeometry(QtCore.QRect(280, 180, 241, 91))
         font = QtGui.QFont()
         font.setPointSize(16)
@@ -73,6 +77,15 @@ class Ui_LogInOrRegister(object):
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
+    def handle_exit(self, exit_call_back, aes_cipher):
+        try:
+            exit_call_back("exit", aes_cipher)
+        except Exception as e:
+            print(f"An error occurred while exiting the application: {e}")
+        finally:
+            QtWidgets.QApplication.quit()
+
+
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "logInOrRegister"))
@@ -82,20 +95,20 @@ class Ui_LogInOrRegister(object):
 
 
 class Ui_LogInWindow(object):
-    def call_Enter(self, EnterCallBack, CallBackFileWindow, MainWindow):
-        self.result, files = EnterCallBack(self.Username, "", "", self.Password_LineEdit, "", "LogIn")
+    def call_Enter(self, EnterCallBack, CallBackFileWindow, MainWindow, aes_cipher):
+        self.result, files = EnterCallBack(self.Username, "", "", self.Password_LineEdit, "", "LogIn", aes_cipher)
         if self.result != "connection succeed":
             msg_box = QMessageBox()
-            msg_box.setWindowTitle("Bomboclat")
+            msg_box.setWindowTitle("error")
             msg_box.setText(self.result)
             msg_box.exec_()
         else:
-            CallBackFileWindow(MainWindow, files)
+            CallBackFileWindow(MainWindow, files, aes_cipher)
 
-    def OpenRegistrtWindow(self, MainWindow, CallBackShowRegister):
-        CallBackShowRegister(MainWindow)
+    def OpenRegistrtWindow(self, MainWindow, CallBackShowRegister, aes_cipher):
+        CallBackShowRegister(MainWindow, aes_cipher)
 
-    def setupUi(self, MainWindow, EnterCallBack, CallBackShowRegister, CallBackFileWindow):
+    def setupUi(self, MainWindow, EnterCallBack, CallBackShowRegister, CallBackFileWindow, exit_call_back, aes_cipher):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(711, 620)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
@@ -107,8 +120,12 @@ class Ui_LogInWindow(object):
         self.label.setFont(font)
         self.label.setAlignment(QtCore.Qt.AlignCenter)
         self.label.setObjectName("label")
+        self.exit_button = QtWidgets.QPushButton(self.centralwidget)
+        self.exit_button.setGeometry(QtCore.QRect(MainWindow.width() - 100, MainWindow.height() - 50, 80, 30))
+        self.exit_button.setText("Exit")
+        self.exit_button.clicked.connect(lambda: self.handle_exit(exit_call_back, aes_cipher))
         self.result = ""
-        self.Enter = QtWidgets.QPushButton(self.centralwidget, clicked=lambda: self.call_Enter(EnterCallBack, CallBackFileWindow, MainWindow))
+        self.Enter = QtWidgets.QPushButton(self.centralwidget, clicked=lambda: self.call_Enter(EnterCallBack, CallBackFileWindow, MainWindow, aes_cipher))
         self.Enter.setGeometry(QtCore.QRect(260, 430, 191, 51))
         font = QtGui.QFont()
         font.setPointSize(12)
@@ -121,7 +138,7 @@ class Ui_LogInWindow(object):
 "}")
         self.Enter.setObjectName("pushButton")
         # Currently takes you back to the window when you pick either LogIn or Register
-        self.SwitchToRegister = QtWidgets.QPushButton(self.centralwidget, clicked=lambda: self.OpenRegistrtWindow(MainWindow, CallBackShowRegister))
+        self.SwitchToRegister = QtWidgets.QPushButton(self.centralwidget, clicked=lambda: self.OpenRegistrtWindow(MainWindow, CallBackShowRegister, aes_cipher))
         self.SwitchToRegister.setGeometry(QtCore.QRect(260, 490, 191, 51))
         font = QtGui.QFont()
         font.setPointSize(12)
@@ -184,6 +201,15 @@ class Ui_LogInWindow(object):
             self.Password_LineEdit.setEchoMode(QLineEdit.Password)
             self.toggle_button.setText("Show Password")
 
+    def handle_exit(self, exit_call_back, aes_cipher):
+        try:
+            exit_call_back("exit", aes_cipher)
+        except Exception as e:
+            print(f"An error occurred while exiting the application: {e}")
+        finally:
+            QtWidgets.QApplication.quit()
+
+
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "LogIn"))
@@ -196,20 +222,20 @@ class Ui_LogInWindow(object):
 
 
 class Ui_RegisterWindow(object):
-    def call_Enter(self, EnterCallBack, CallBackFileWindow, MainWindow):
-        self.result = EnterCallBack(self.Username, self.FirstName, self.LastName, self.Password_LineEdit, self.ConfirmPassword_LineEdit, "Register")
+    def call_Enter(self, EnterCallBack, CallBackFileWindow, MainWindow, aes_cipher):
+        self.result = EnterCallBack(self.Username, self.FirstName, self.LastName, self.Password_LineEdit, self.ConfirmPassword_LineEdit, "Register", aes_cipher)
         if self.result != "connection succeed":
             msg_box = QMessageBox()
-            msg_box.setWindowTitle("Bomboclat")
+            msg_box.setWindowTitle("error")
             msg_box.setText(self.result)
             msg_box.exec_()
         else:
-            CallBackFileWindow(MainWindow, [])
+            CallBackFileWindow(MainWindow, [], aes_cipher)
 
-    def OpenLogInWindow(self, MainWindow, CallBackShowLogIn):
-        CallBackShowLogIn(MainWindow)
+    def OpenLogInWindow(self, MainWindow, CallBackShowLogIn, aes_cipher):
+        CallBackShowLogIn(MainWindow, aes_cipher)
 
-    def setupUi(self, MainWindow, EnterCallBack, CallBackShowLogIn, CallBackFileWindow):
+    def setupUi(self, MainWindow, EnterCallBack, CallBackShowLogIn, CallBackFileWindow, exit_call_back, aes_cipher):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(1099, 845)
         MainWindow.setLayoutDirection(QtCore.Qt.LeftToRight)
@@ -222,8 +248,12 @@ class Ui_RegisterWindow(object):
         self.label.setFont(font)
         self.label.setAlignment(QtCore.Qt.AlignCenter)
         self.label.setObjectName("label")
+        self.exit_button = QtWidgets.QPushButton(self.centralwidget)
+        self.exit_button.setGeometry(QtCore.QRect(MainWindow.width() - 100, MainWindow.height() - 50, 80, 30))
+        self.exit_button.setText("Exit")
+        self.exit_button.clicked.connect(lambda: self.handle_exit(exit_call_back, aes_cipher))
         self.result = ""
-        self.Enter = QtWidgets.QPushButton(self.centralwidget, clicked=lambda: self.call_Enter(EnterCallBack, CallBackFileWindow, MainWindow))
+        self.Enter = QtWidgets.QPushButton(self.centralwidget, clicked=lambda: self.call_Enter(EnterCallBack, CallBackFileWindow, MainWindow, aes_cipher))
         self.Enter.setGeometry(QtCore.QRect(470, 660, 191, 51))
         font = QtGui.QFont()
         font.setPointSize(12)
@@ -236,7 +266,7 @@ class Ui_RegisterWindow(object):
 "}")
         self.Enter.setObjectName("Enter")
         # Currently takes you back to the window when you pick either LogIn or Register
-        self.SwitchToLogin = QtWidgets.QPushButton(self.centralwidget, clicked=lambda: self.OpenLogInWindow(MainWindow, CallBackShowLogIn))
+        self.SwitchToLogin = QtWidgets.QPushButton(self.centralwidget, clicked=lambda: self.OpenLogInWindow(MainWindow, CallBackShowLogIn, aes_cipher))
         self.SwitchToLogin.setGeometry(QtCore.QRect(470, 720, 191, 51))
         font = QtGui.QFont()
         font.setPointSize(12)
@@ -357,6 +387,15 @@ class Ui_RegisterWindow(object):
             self.ConfirmPassword_LineEdit.setEchoMode(QLineEdit.Password)
             self.Password_LineEdit.setEchoMode(QLineEdit.Password)
             self.toggle_button.setText("Show Password")
+
+    def handle_exit(self, exit_call_back, aes_cipher):
+        try:
+            exit_call_back("exit", aes_cipher)
+        except Exception as e:
+            print(f"An error occurred while exiting the application: {e}")
+        finally:
+            QtWidgets.QApplication.quit()
+
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
@@ -534,7 +573,7 @@ class Ui_file_window(object):
         self.file_type_label.setText(_translate("MainWindow", "File Type:"))
         self.owner_label.setText(_translate("MainWindow", "Owner:"))
 class Ui_file_window_ver2(object):
-    def setupUi_file_window(self, MainWindow, add_file_call_back, search_by_criteria, download_file, update_file_call_back):
+    def setupUi_file_window(self, MainWindow, add_file_call_back, search_by_criteria, download_file, update_file_call_back, exit_call_back, aes_cipher):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(1124, 896)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
@@ -549,7 +588,7 @@ class Ui_file_window_ver2(object):
         self.file_tabel.setColumnWidth(2, 200)
         self.file_tabel.setHorizontalHeaderLabels(["File Name", "Date Created", "File Owner"])
         self.file_tabel.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.file_tabel.customContextMenuRequested.connect(lambda pos: self.show_context_menu(pos, download_file))
+        self.file_tabel.customContextMenuRequested.connect(lambda pos: self.show_context_menu(pos, download_file, aes_cipher))
         self.search_file_line_edit = QtWidgets.QLineEdit(self.centralwidget)
         self.search_file_line_edit.setGeometry(QtCore.QRect(140, 30, 981, 31))
         self.search_file_line_edit.setObjectName("search_file_line_edit")
@@ -560,7 +599,11 @@ class Ui_file_window_ver2(object):
         self.label.setGeometry(QtCore.QRect(80, 10, 371, 21))
         self.label.setText("")
         self.label.setObjectName("label")
-        self.add_file_pushButton = QtWidgets.QPushButton(self.centralwidget, clicked=lambda: self.add_file(add_file_call_back, update_file_call_back))
+        self.exit_button = QtWidgets.QPushButton(self.centralwidget)
+        self.exit_button.setGeometry(QtCore.QRect(MainWindow.width() - 100, MainWindow.height() - 50, 80, 30))
+        self.exit_button.setText("Exit")
+        self.exit_button.clicked.connect(lambda: self.handle_exit(exit_call_back, aes_cipher))
+        self.add_file_pushButton = QtWidgets.QPushButton(self.centralwidget, clicked=lambda: self.add_file(add_file_call_back, update_file_call_back, aes_cipher))
         self.add_file_pushButton.setGeometry(QtCore.QRect(0, 30, 131, 31))
         # self.add_file_pushButton.clicked.connect(self.add_file)
         icon = QtGui.QIcon()
@@ -568,7 +611,7 @@ class Ui_file_window_ver2(object):
         self.add_file_pushButton.setIcon(icon)
         self.add_file_pushButton.setIconSize(QtCore.QSize(24, 24))
         self.add_file_pushButton.setObjectName("add_file_pushButton")
-        self.search_file_button = QtWidgets.QPushButton(self.centralwidget, clicked= lambda: self.search(search_by_criteria))
+        self.search_file_button = QtWidgets.QPushButton(self.centralwidget, clicked= lambda: self.search(search_by_criteria, aes_cipher))
         self.search_file_button.setGeometry(QtCore.QRect(0, 90, 131, 31))
         self.search_file_button.setObjectName("search_file_pushButton")
         self.exact_word = ""
@@ -578,7 +621,7 @@ class Ui_file_window_ver2(object):
         #self.download_file_button = QtWidgets.QPushButton(self.centralwidget, clicked= lambda: self.download(download_file))
         #self.download_file_button.setGeometry(QtCore.QRect(0, 102, 131, 31))
         #self.download_file_button.setObjectName("download_file_button")
-        self.download_dir = os.path.expanduser("~/Downloads")
+        self.download_dir = os.path.expanduser("~/Downloads/Info_Manage")
         self.download_dir_label = QtWidgets.QLabel(self.centralwidget)
         self.download_dir_label.setGeometry(QtCore.QRect(500, 0, 400, 31))
         self.download_dir_label.setObjectName("download_file_label")
@@ -638,6 +681,13 @@ class Ui_file_window_ver2(object):
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
+    def open_error_windows(self, error_msg, window_title):
+        msg_box = QMessageBox()
+        msg_box.setWindowTitle(window_title)
+        msg_box.setText(error_msg)
+        msg_box.exec_()
+        return
+
     def show_keyword_search_dialog(self):
         self.keyword_search_dialog = KeywordSearchDialog(self.centralwidget)
         self.keyword_search_dialog.accepted.connect(self.handle_keyword_search)
@@ -660,13 +710,13 @@ class Ui_file_window_ver2(object):
         # Call the search_by_criteria function with the appropriate arguments
         # search_by_criteria(exact_word, wildcard_word, multi_words, ...)
 
-    def show_context_menu(self, pos, download_file_func):
+    def show_context_menu(self, pos, download_file_func, aes_cipher):
         # Create a QMenu instance
         menu = QMenu(self.file_tabel)
 
         # Create a QAction for the "Download File" option
         download_action = QAction("Download File", self.file_tabel)
-        download_action.triggered.connect(lambda: self.download_selected_file(download_file_func))
+        download_action.triggered.connect(lambda: self.download_selected_file(download_file_func, aes_cipher))
 
         # Add the action to the menu
         menu.addAction(download_action)
@@ -674,23 +724,20 @@ class Ui_file_window_ver2(object):
         # Show the context menu at the specified position
         menu.exec_(self.file_tabel.mapToGlobal(pos))
 
-    def download_selected_file(self, download_file_func):
+    def download_selected_file(self, download_file_func, aes_cipher):
         selected_items = self.file_tabel.selectedItems()
         if selected_items:
             print("hej 2")
             selected_item = selected_items[0]
             row = selected_item.row()
             file_name = self.file_tabel.item(row, 0).text()
-            answer = download_file_func(file_name, self.download_dir)
+            answer = download_file_func(file_name, self.download_dir, aes_cipher)
             if answer == "file is being used":
-                msg_box = QMessageBox()
-                msg_box.setWindowTitle("error")
-                msg_box.setText("File is being used. To download close it and retry")
-                msg_box.exec_()
+                self.open_error_windows("File is being used. To download close it and retry", "error")
                 return
             os.startfile(self.download_dir)
 
-    def download(self, download_file):
+    def download(self, download_file, aes_cipher):
         selected_items = self.file_tabel.selectedItems()
         if len(selected_items) > 0:
             selected_item = selected_items[0]
@@ -698,7 +745,7 @@ class Ui_file_window_ver2(object):
             column = selected_item.column()
             if column == 0:  # Check if selected item is from the correct column
                 item_text = selected_item.text()
-                download_file(item_text, self.download_dir)
+                download_file(item_text, self.download_dir, aes_cipher)
             else:
                 print("Selected item is not from the correct column.")
 
@@ -709,7 +756,7 @@ class Ui_file_window_ver2(object):
         print(self.download_dir)
 
 
-    def search(self, search_by_criteria):
+    def search(self, search_by_criteria, aes_cipher):
         search = self.search_file_line_edit.text()
         file_type = self.file_type_comboBox.currentText()
         date = self.edited_date_comboBox.currentText()
@@ -723,7 +770,7 @@ class Ui_file_window_ver2(object):
         else:
             start_date = ""
             end_date = ""
-        files = search_by_criteria(search, file_type, date, start_date, end_date, exact_word, wildcard_word, and_words, or_words)
+        files = search_by_criteria(search, file_type, date, start_date, end_date, exact_word, wildcard_word, and_words, or_words, aes_cipher)
         self.init_KeywordSearchDialog()
         self.file_tabel.clearContents()
         self.file_tabel.setRowCount(0)
@@ -791,10 +838,7 @@ class Ui_file_window_ver2(object):
         start_date = start_date_edit.date()
         end_date = end_date_edit.date()
         if start_date > end_date:
-            msg_box = QMessageBox()
-            msg_box.setWindowTitle("date error")
-            msg_box.setText("Invalid date range")
-            msg_box.exec_()
+            self.open_error_windows("Invalid date range", "date error")
             return
         self.selected_start_date = start_date
         self.selected_end_date = end_date
@@ -807,13 +851,10 @@ class Ui_file_window_ver2(object):
 
         self.hide_custom_date_range_dialog()
 
-    def add_file(self, add_file_call_back, update_file_call_back):
-        self.file_name, answer, file_path = add_file_call_back()
+    def add_file(self, add_file_call_back, update_file_call_back, aes_cipher):
+        self.file_name, answer, file_path = add_file_call_back(aes_cipher)
         if answer != "Saved File" and answer != "file already exists":
-            msg_box = QMessageBox()
-            msg_box.setWindowTitle("Bomboclat")
-            msg_box.setText(answer)
-            msg_box.exec_()
+            self.open_error_windows(answer, "error")
             return
         elif answer == "file already exists":
             msg_box = QMessageBox()
@@ -823,14 +864,10 @@ class Ui_file_window_ver2(object):
 
             button = msg_box.exec_()
             if button == QMessageBox.Yes:
-                answer, self.file_name = update_file_call_back(file_path)
+                answer, self.file_name = update_file_call_back(file_path, aes_cipher)
                 if answer != "Updated":
-                    msg_box = QMessageBox()
-                    msg_box.setWindowTitle("Bomboclat")
-                    msg_box.setText(answer)
-                    msg_box.exec_()
+                    self.open_error_windows(answer, "error")
                     return
-
             else:
                 return
         self.file_tabel.clearContents()
@@ -849,6 +886,13 @@ class Ui_file_window_ver2(object):
             self.file_tabel.setItem(row, column, QTableWidgetItem(item))
             column += 1
 
+    def handle_exit(self, exit_call_back, aes_cipher):
+        try:
+            exit_call_back("exit", aes_cipher)
+        except Exception as e:
+            print(f"An error occurred while exiting the application: {e}")
+        finally:
+            QtWidgets.QApplication.quit()
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "file_window"))

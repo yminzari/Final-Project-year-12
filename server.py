@@ -9,11 +9,14 @@ import hashlib
 import os
 import fitz
 import pandas as pd
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_OAEP
 
 
 socket_to_username = {}
 socket_to_user_id = {}
 
+# If download path does not exist in the clint create the folder and download there Done
 # on Login screen display the right error. For example is password is wrong. Display "Wrong password" Done
 # NICE TO HAVE: The option of reset password
 # when wanting to save a file use f"{save_dirct}\\{username}" as it is the folder for each user
@@ -22,8 +25,9 @@ socket_to_user_id = {}
 # Check the option of another owner with his own files
 # Create the admin screens
 # Fix the custom date range to display the dates and to allow redefine of it Done
-# Create a function for error massages
+# Create a function for error massages Done
 # Add pdf and excel files Done
+# Add rsa and aes to the server and client
 
 
 def handle_client(conn, client_address):
@@ -32,22 +36,24 @@ def handle_client(conn, client_address):
     connectiondb = oracledb.connect(user="INFO_MANAGE", password="Henry123", host="localhost", port=1521,
                                     service_name="xepdb1")
     cursor = connectiondb.cursor()
+    aes_cipher = first_connection(conn)
     error_msg = ""
     cursor.execute('select 1 from dual')
     is_ok = False
     while is_ok is False:
         data = recv_msg(conn)
         print(data.get("msg"))
-        if data.get("msg") == "error":
+        if data.get("msg") == "error" or data.get("msg") == "exit":
+            print("exiting")
             return
         if "1" in data.get("msg"):
-            is_ok, error_msgs = handle_register(conn, cursor, connectiondb)
+            is_ok, error_msgs = handle_register(conn, cursor, connectiondb, aes_cipher)
             if is_ok:
                 send_data(conn, "connection succeed", 1, "")
             else:
                 send_data(conn, error_msg, 1, "")
         elif "2" in data.get("msg"):
-            is_ok, error_msg, files = handle_login(conn, cursor, connectiondb)
+            is_ok, error_msg, files = handle_login(conn, cursor, connectiondb, aes_cipher)
             if is_ok:
                 send_data(conn, "connection succeed", 1, "")
                 send_data(conn, files, 1, "")
@@ -71,23 +77,49 @@ def handle_client(conn, client_address):
             return
         # saves the file to dir written need to add the db
         elif data.get("operation") == "2":
-            handle_files(conn, data, cursor, connectiondb)
+            handle_files(conn, data, cursor, connectiondb, aes_cipher)
         # need to add dealing with the different req
         elif data.get("operation") == "1":
-            if data["msg"]["req"] == "download":
-                file_path = data["msg"]["file_path"]
-                with open(file_path, "rb") as data:
-                    print(data)
-                    file = data.read()
-                send_data(conn, file, 2, file_path)
-            elif data["msg"]["req"] == "update":
-                print(data["msg"]["req"])
-                update_file(conn, cursor, connectiondb)
-            elif data["msg"]["req"] == "ext_query":
-                send_files_by_criteria(data["msg"]["ext_query"], cursor, conn)
+            try:
+                if data["msg"]["req"] == "download":
+                    file_path = data["msg"]["file_path"]
+                    with open(file_path, "rb") as data:
+                        print(data)
+                        file = data.read()
+                    send_data(conn, file, 2, file_path)
+                elif data["msg"]["req"] == "update":
+                    print(data["msg"]["req"])
+                    update_file(conn, cursor, connectiondb, aes_cipher)
+                elif data["msg"]["req"] == "ext_query":
+                    send_files_by_criteria(data["msg"]["ext_query"], cursor, conn, aes_cipher)
+            except Exception as e:
+                e = str(e)
+                print(e)
+                send_data(conn, e, 1, "")
 
 
-def update_file(conn, cursor, connectiondb):
+def first_connection(client_socket):
+    key = RSA.generate(2048)
+    public_key = key.public_key().export_key()
+    private_key = key.export_key()
+
+    keys_dict = {"key": public_key}
+    send_data(client_socket, keys_dict, 1, "")
+    keys_response_dict = recv_msg(client_socket)["msg"]
+    encrypted_aes_key = keys_response_dict.get("aes_key")
+    encrypted_iv = keys_response_dict.get("iv")
+
+    cipher = PKCS1_OAEP.new(RSA.import_key(private_key))
+    aes_key = cipher.decrypt(encrypted_aes_key)
+    iv = cipher.decrypt(encrypted_iv)
+
+    print(f"Decrypted aes key: {aes_key}")
+    print(f"Decrypted iv: {iv}")
+    aes_cipher = protocol.AESCipher(aes_key, iv)
+    return aes_cipher
+
+
+def update_file(conn, cursor, connectiondb, aes_cipher):
     file_msg = recv_msg(conn)
     print(file_msg["file_path"])
     try:
@@ -130,7 +162,7 @@ def update_file(conn, cursor, connectiondb):
         send_data(conn, str(e), 1, "")
 
 
-def handle_files(conn, data, cursor, connectiondb):
+def handle_files(conn, data, cursor, connectiondb, aes_cipher):
     try:
         file_path_dict = data.get("file_path").split("/")
         print(file_path_dict[-1])
@@ -184,7 +216,7 @@ def handle_files(conn, data, cursor, connectiondb):
         print(e)
 
 
-def send_files_by_criteria(criteria, cursor, conn):
+def send_files_by_criteria(criteria, cursor, conn, aes_cipher):
     try:
         query = f"""SELECT FL.FILE_PATH,to_char(FL.DATE_CREATE,'dd/mm/yyyy hh24:mi'),UT.USER_NAME from info_manage.file_list_tbl fl,
                                                 info_manage.USERS_TBL UT
@@ -197,6 +229,28 @@ def send_files_by_criteria(criteria, cursor, conn):
         send_data(conn, files, 1, "")
     except Exception as e:
         print(e)
+
+
+
+
+def recv_msg_encrypt(conn, aes_cipher):
+    global function_name
+    function_name = "recv_msg_encrypt"
+    try:
+        data_size = protocol.recvall(conn, 4)
+        data_size = aes_cipher.decrypt(data_size)
+        print(data_size)
+        length = struct.unpack('>I', data_size)[0]
+        data_recv = protocol.recvall(conn, length)
+        print(data_recv)
+        data_recv = aes_cipher.decrypt(data_recv)
+        #   lengthdict = len(protocol.parse_header(data_recv))
+        data_recv = protocol.parse_header(data_recv)
+        return data_recv
+    except Exception as e:
+        print(f"failed at {function_name} {e}")
+        return {"msg": "error"}
+
 
 
 def recv_msg(conn):
@@ -226,7 +280,7 @@ def recv_msg(conn):
 
 
 # need to check if client does not already exist and username and password are ok if everything is good then return username True
-def handle_register(conn, cursor, connectiondb):
+def handle_register(conn, cursor, connectiondb, aes_cipher):
     global function_name
     global socket_to_username
     global socket_to_user_id
@@ -273,7 +327,7 @@ def handle_register(conn, cursor, connectiondb):
 
 
 # need to check if client is in the db
-def handle_login(conn, cursor, connectiondb):
+def handle_login(conn, cursor, connectiondb, aes_cipher):
     global function_name
     global socket_to_username
     global socket_to_user_id
@@ -378,6 +432,32 @@ def send_data(conn, data, operation, file_to_send):
             data = protocol.create_file_header(data, file_to_send)
             length = len(data)
             packed_length = struct.pack('>I', length)
+            # Send the packed length over the socket
+            conn.sendall(packed_length)
+            conn.sendall(data)
+    except Exception as e:
+        print(f"failed at {function_name} {e}")
+
+
+def send_data_encrypt(conn, data, operation, file_to_send, aes_cipher):
+    global function_name
+    function_name = "send_data"
+    try:
+        if operation == 1:
+            data = protocol.create_string_header(data)
+            length = len(data)
+            packed_length = struct.pack('>I', length)
+            packed_length = aes_cipher.encrypt(packed_length)
+            data = aes_cipher.encrypt(data)
+            # Send the packed length over the socket
+            conn.sendall(packed_length)
+            conn.sendall(data)
+        elif operation == 2:
+            data = protocol.create_file_header(data, file_to_send)
+            length = len(data)
+            packed_length = struct.pack('>I', length)
+            packed_length = aes_cipher.encrypt(packed_length)
+            data = aes_cipher.encrypt(data)
             # Send the packed length over the socket
             conn.sendall(packed_length)
             conn.sendall(data)

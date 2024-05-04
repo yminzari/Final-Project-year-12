@@ -8,9 +8,17 @@ import sys
 from PyQt5 import QtWidgets
 import PyQt5
 import os
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_OAEP
+from Crypto.Random import get_random_bytes
 
 
-def update_file(file_path):
+def send_exit(exit_msg,aes_cipher):
+    send_data(client_socket, exit_msg, 1, "")
+    sys.exit()
+
+
+def update_file(file_path, aes_cipher):
     print(file_path)
     req_dir = {"req": "update", "file_path": file_path}
     send_data(client_socket, req_dir, 1, "")
@@ -23,8 +31,12 @@ def update_file(file_path):
     return answer, file_name
 
 
-def download_file(file_path, download_path):
+def download_file(file_path, download_path, aes_cipher):
     req_dir = {"req": "download", "file_path": file_path}
+    if os.path.exists(download_path):
+        print("folder exist")
+    else:
+        os.mkdir(download_path)
     send_data(client_socket, req_dir, 1, "")
     file_msg = recv_msg(client_socket)
     file_path_dict = file_msg.get("file_path").split("/")
@@ -43,12 +55,12 @@ def download_file(file_path, download_path):
 
 
 # need to send added files to the server and deal with responses appropriately
-def ShowFileWindow(CurrentWindow, files):
+def ShowFileWindow(CurrentWindow, files, aes_cipher):
     global file_window
     print(files)
     file_window = QtWidgets.QMainWindow()
     FileWindow_ui = PyQ5_windows.Ui_file_window_ver2()
-    FileWindow_ui.setupUi_file_window(file_window, add_file, search_by_criteria, download_file, update_file)
+    FileWindow_ui.setupUi_file_window(file_window, add_file, search_by_criteria, download_file, update_file, send_exit, aes_cipher)
     try:
         if len(files) > 0:
             for file in files:
@@ -59,7 +71,7 @@ def ShowFileWindow(CurrentWindow, files):
         print(e)
 
 
-def add_file():
+def add_file(aes_cipher):
     file_path = QFileDialog.getOpenFileName(None, "upload a file", os.path.expanduser("~"), "All (*.txt *.docx *.pdf *.xlsx) ;;Docx (*.docx);; text (*.txt);; PDF (*.pdf);; Excel (*.xlsx);")
     if file_path[0] == "":
         return "", "no file was selected"
@@ -76,7 +88,7 @@ def add_file():
     # file_list.addItem(file_name)
 
 
-def search_by_criteria(search, file_type, date, start_date, end_date,  exact_word, wildcard_word, and_words, or_words):
+def search_by_criteria(search, file_type, date, start_date, end_date,  exact_word, wildcard_word, and_words, or_words, aes_cipher):
     ext_query = ""
     and_quary = ""
     or_quary = ""
@@ -127,24 +139,24 @@ def search_by_criteria(search, file_type, date, start_date, end_date,  exact_wor
     return files["msg"]
 
 
-def ShowRegister(CurrentWindow):
+def ShowRegister(CurrentWindow, aes_cipher):
     window = QtWidgets.QMainWindow()
     RegisterUi = PyQ5_windows.Ui_RegisterWindow()
-    RegisterUi.setupUi(window, Enter, ShowLogIn, ShowFileWindow)
+    RegisterUi.setupUi(window, Enter, ShowLogIn, ShowFileWindow, send_exit, aes_cipher)
     window.show()
     CurrentWindow.close()
 
 
-def ShowLogIn(CurrentWindow):
+def ShowLogIn(CurrentWindow, aes_cipher):
     window = QtWidgets.QMainWindow()
     LogInUi = PyQ5_windows.Ui_LogInWindow()
-    LogInUi.setupUi(window, Enter, ShowRegister, ShowFileWindow)
+    LogInUi.setupUi(window, Enter, ShowRegister, ShowFileWindow, send_exit, aes_cipher)
     window.show()
     CurrentWindow.close()
 
 
 # Use callback very smart
-def Enter(Username:PyQt5.QtWidgets.QLineEdit, FirstName:PyQt5.QtWidgets.QLineEdit, LastName:PyQt5.QtWidgets.QLineEdit, Password_LineEdit:PyQt5.QtWidgets.QLineEdit, ConfirmPassword_LineEdit:PyQt5.QtWidgets.QLineEdit, ClassName):
+def Enter(Username:PyQt5.QtWidgets.QLineEdit, FirstName:PyQt5.QtWidgets.QLineEdit, LastName:PyQt5.QtWidgets.QLineEdit, Password_LineEdit:PyQt5.QtWidgets.QLineEdit, ConfirmPassword_LineEdit:PyQt5.QtWidgets.QLineEdit, ClassName, aes_cipher):
     global RegisterOrLogIn
     global UserInformation
     if ClassName == "Register":
@@ -166,7 +178,9 @@ def Enter(Username:PyQt5.QtWidgets.QLineEdit, FirstName:PyQt5.QtWidgets.QLineEdi
         data = UserInformation
         send_data(client_socket, data, 1, "")
         data_recv = recv_msg(client_socket)
+        print("hej 4")
         files = recv_msg(client_socket)["msg"]
+        print("hej 5")
         print(data_recv["msg"])
         return data_recv["msg"], files
 
@@ -193,12 +207,73 @@ def send_data(conn, data, operation, file_to_send):
         # data = UserInformation
 
 
+def send_data_encrypt(conn, data, operation, file_to_send, aes_cipher):
+    try:
+        if operation == 1:
+            data = protocol.create_string_header(data)
+            length = len(data)
+            print(length)
+            packed_length = struct.pack('>I', length)
+            packed_length = aes_cipher.encrypt(packed_length)
+            print(packed_length)
+            data = aes_cipher.encrypt(data)
+            print(data)
+            # Send the packed length over the socket
+            conn.sendall(packed_length)
+            conn.sendall(data)
+        elif operation == 2:
+            # print(os.path.getsize(file_to_send))
+            data = protocol.create_file_header(data, file_to_send)
+            # print(data)
+            length = len(data)
+            # print(length)
+            packed_length = struct.pack('>I', length)
+            packed_length = aes_cipher.encrypt(packed_length)
+            data = aes_cipher.encrypt(data)
+            # Send the packed length over the socket
+            # print(packed_length)
+            conn.sendall(packed_length)
+            conn.sendall(data)
+            # data = UserInformation
+    except Exception as e:
+        print(e)
+
+
 def recv_msg(conn):
     data_size = protocol.recvall(conn, 4)
     length = struct.unpack('>I', data_size)[0]
     data_recv = protocol.recvall(conn, length)
     data_recv = protocol.parse_header(data_recv)
     return data_recv
+
+
+def recv_msg_encrypt(conn, aes_cipher):
+    data_size = protocol.recvall(conn, 4)
+    data_size = aes_cipher.decrypt(data_size)
+    length = struct.unpack('>I', data_size)[0]
+    data_recv = protocol.recvall(conn, length)
+    data_recv = aes_cipher.decrypt(data_recv)
+    data_recv = protocol.parse_header(data_recv)
+    return data_recv
+
+
+def first_connection():
+    encryption_key = get_random_bytes(32)
+    iv = get_random_bytes(16)
+
+    aes_cipher = protocol.AESCipher(encryption_key, iv)
+    print(f"Decrypted aes key: {encryption_key}")
+    print(f"Decrypted iv: {iv}")
+    keys_dict = recv_msg(client_socket)
+    public_key = keys_dict["msg"]["key"]
+    cipher = PKCS1_OAEP.new(RSA.import_key(public_key))
+
+    encrypted_aes_key = cipher.encrypt(encryption_key)
+    encrypted_iv = cipher.encrypt(iv)
+
+    keys_response_dict = {"aes_key": encrypted_aes_key, "iv": encrypted_iv}
+    send_data(client_socket, keys_response_dict, 1, "")
+    return aes_cipher
 
 
 host = '127.0.0.1'
@@ -215,10 +290,11 @@ client_socket.connect((host, port))
 
 def main():
     global LogInOrRegister
+    aes_cipher = first_connection()
     app = QtWidgets.QApplication(sys.argv)
     MainWindow = QtWidgets.QMainWindow()
     LogInOrRegisterui = LogInOrRegister
-    LogInOrRegisterui.setupUi(MainWindow, ShowRegister, ShowLogIn)
+    LogInOrRegisterui.setupUi(MainWindow, ShowRegister, ShowLogIn, send_exit, aes_cipher)
     MainWindow.show()
     app.exec_()
     # data = input("pls enter 1 for register and 2 for log in: ")
