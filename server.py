@@ -16,6 +16,7 @@ from Crypto.Cipher import PKCS1_OAEP
 socket_to_username = {}
 socket_to_user_id = {}
 
+# Add encrypted messages Done
 # If download path does not exist in the clint create the folder and download there Done
 # on Login screen display the right error. For example is password is wrong. Display "Wrong password" Done
 # NICE TO HAVE: The option of reset password
@@ -28,6 +29,10 @@ socket_to_user_id = {}
 # Create a function for error massages Done
 # Add pdf and excel files Done
 # Add rsa and aes to the server and client
+# Add tab order at login , register and search screen
+# Rebuild context index - Imma
+# Add encryption at DB level
+
 
 
 def handle_client(conn, client_address):
@@ -54,24 +59,26 @@ def handle_client(conn, client_address):
             print("exiting")
             return
         if "1" in data.get("msg"):
-            is_ok, error_msgs = handle_register(conn, cursor, connectiondb, aes_cipher)
+            is_ok, error_msg = handle_register(conn, cursor, connectiondb, aes_cipher)
+            print(is_ok)
+            print(error_msg)
             if is_ok:
-                send_data(conn, "connection succeed", 1, "")
+                send_data_encrypt(conn, "connection succeed", 1, "", aes_cipher)
             else:
-                send_data(conn, error_msg, 1, "")
+                send_data_encrypt(conn, error_msg, 1, "", aes_cipher)
         elif "2" in data.get("msg"):
             is_ok, error_msg, files = handle_login(conn, cursor, connectiondb, aes_cipher)
             if is_ok:
-                send_data(conn, "connection succeed", 1, "")
-                send_data(conn, files, 1, "")
+                send_data_encrypt(conn, "connection succeed", 1, "", aes_cipher)
+                send_data_encrypt(conn, files, 1, "", aes_cipher)
             else:
-                send_data(conn, error_msg, 1, "")
-                send_data(conn, files, 1, "")
+                send_data_encrypt(conn, error_msg, 1, "", aes_cipher)
+                send_data_encrypt(conn, files, 1, "", aes_cipher)
         else:
-            send_data(conn, "didn't enter log in or register", 1, "")
+            send_data_encrypt(conn, "didn't enter log in or register", 1, "", aes_cipher)
     while True:
         print(socket_to_username)
-        data = recv_msg(conn)
+        data = recv_msg_encrypt(conn, aes_cipher)
         print(data.get("msg"))
         if data.get("msg") == "error" or data.get("msg") == "exit":
             try:
@@ -93,7 +100,7 @@ def handle_client(conn, client_address):
                     with open(file_path, "rb") as data:
                         print(data)
                         file = data.read()
-                    send_data(conn, file, 2, file_path)
+                    send_data_encrypt(conn, file, 2, file_path, aes_cipher)
                 elif data["msg"]["req"] == "update":
                     print(data["msg"]["req"])
                     update_file(conn, cursor, connectiondb, aes_cipher)
@@ -102,7 +109,7 @@ def handle_client(conn, client_address):
             except Exception as e:
                 e = str(e)
                 print(e)
-                send_data(conn, e, 1, "")
+                send_data_encrypt(conn, e, 1, "", aes_cipher)
 
 
 def first_connection(client_socket):
@@ -127,7 +134,7 @@ def first_connection(client_socket):
 
 
 def update_file(conn, cursor, connectiondb, aes_cipher):
-    file_msg = recv_msg(conn)
+    file_msg = recv_msg_encrypt(conn, aes_cipher)
     print(file_msg["file_path"])
     try:
         file_path_dict = file_msg.get("file_path").split("/")
@@ -160,13 +167,13 @@ def update_file(conn, cursor, connectiondb, aes_cipher):
                                                     where fl.create_by = ut.user_id AND FL.CREATE_BY = :user_id""",
                        (socket_to_user_id.get(conn),))
         files = cursor.fetchall()
-        send_data(conn, "Updated", 1, "")
-        send_data(conn, files, 1, "")
+        send_data_encrypt(conn, "Updated", 1, "", aes_cipher)
+        send_data_encrypt(conn, files, 1, "", aes_cipher)
 
     except Exception as e:
         print(e)
-        send_data(conn, str(e), 1, "")
-        send_data(conn, str(e), 1, "")
+        send_data_encrypt(conn, str(e), 1, "", aes_cipher)
+        send_data_encrypt(conn, str(e), 1, "", aes_cipher)
 
 
 def handle_files(conn, data, cursor, connectiondb, aes_cipher):
@@ -177,8 +184,8 @@ def handle_files(conn, data, cursor, connectiondb, aes_cipher):
         result = cursor.fetchone()[0]
         print("result: " + str(result))
         if result > 0:
-            send_data(conn, "file already exists", 1, "")
-            send_data(conn, "", 1, "")
+            send_data_encrypt(conn, "file already exists", 1, "", aes_cipher)
+            send_data_encrypt(conn, "", 1, "", aes_cipher)
             return
         with open(save_dirct + "/" + socket_to_username.get(conn) + "/" + file_path_dict[-1], 'wb') as file:
             content = ""
@@ -215,11 +222,11 @@ def handle_files(conn, data, cursor, connectiondb, aes_cipher):
                         SET FILE_TEXT = :content
                         WHERE FILE_PATH = :file_path """, content=content, file_path=(save_dirct + "/" + socket_to_username.get(conn) + "/" + file_path_dict[-1]))
         connectiondb.commit()
-        send_data(conn, "Saved File", 1, "")
-        send_data(conn, files, 1, "")
+        send_data_encrypt(conn, "Saved File", 1, "", aes_cipher)
+        send_data_encrypt(conn, files, 1, "", aes_cipher)
     except Exception as e:
-        send_data(conn, str(e), 1, "")
-        send_data(conn, str(e), 1, "")
+        send_data_encrypt(conn, str(e), 1, "", aes_cipher)
+        send_data_encrypt(conn, str(e), 1, "", aes_cipher)
         print(e)
 
 
@@ -233,11 +240,9 @@ def send_files_by_criteria(criteria, cursor, conn, aes_cipher):
         cursor.execute(query, (socket_to_user_id.get(conn),))
         files = cursor.fetchall()
         print(files)
-        send_data(conn, files, 1, "")
+        send_data_encrypt(conn, files, 1, "", aes_cipher)
     except Exception as e:
         print(e)
-
-
 
 
 def recv_msg_encrypt(conn, aes_cipher):
@@ -293,7 +298,7 @@ def handle_register(conn, cursor, connectiondb, aes_cipher):
     global socket_to_username
     global socket_to_user_id
     function_name = "handle_register"
-    UserInformation = recv_msg(conn).get("msg")
+    UserInformation = recv_msg_encrypt(conn, aes_cipher).get("msg")
     username = UserInformation.get("Username")
     print("username: " + username)
     password = UserInformation.get("Password")
@@ -304,10 +309,13 @@ def handle_register(conn, cursor, connectiondb, aes_cipher):
     firstName = UserInformation.get("FirstName")
     lastName = UserInformation.get("LastName")
     if not is_valid_username(username):
+        print("error invalid username")
         if not is_valid_password(password):
+            print("error invalid password")
             return False, "Invalid password and username"
         return False, "Invalid username"
     if not is_valid_password(password):
+        print("error invalid password")
         return False, "Invalid password"
     cursor.execute("SELECT COUNT(*) FROM USERS_TBL WHERE USER_NAME = :username", (username, ))
     result = cursor.fetchone()[0]
@@ -340,7 +348,7 @@ def handle_login(conn, cursor, connectiondb, aes_cipher):
     global socket_to_username
     global socket_to_user_id
     function_name = "handle_login"
-    username_and_password = recv_msg(conn).get("msg")
+    username_and_password = recv_msg_encrypt(conn, aes_cipher).get("msg")
     print(username_and_password)
     username = username_and_password.get("Username")
     password = username_and_password.get("Password")
@@ -453,22 +461,29 @@ def send_data_encrypt(conn, data, operation, file_to_send, aes_cipher):
     try:
         if operation == 1:
             data = protocol.create_string_header(data)
-            length = len(data)
-            packed_length = struct.pack('>I', length)
-            packed_length = aes_cipher.encrypt(packed_length)
+            print(data)
             data = aes_cipher.encrypt(data)
+            length = len(data)
+            print(length)
+            packed_length = struct.pack('>I', length)
+            print(packed_length)
+
             # Send the packed length over the socket
             conn.sendall(packed_length)
             conn.sendall(data)
         elif operation == 2:
+            # print(os.path.getsize(file_to_send))
             data = protocol.create_file_header(data, file_to_send)
-            length = len(data)
-            packed_length = struct.pack('>I', length)
-            packed_length = aes_cipher.encrypt(packed_length)
+            # print(data)
             data = aes_cipher.encrypt(data)
+            length = len(data)
+            # print(length)
+            packed_length = struct.pack('>I', length)
             # Send the packed length over the socket
+            # print(packed_length)
             conn.sendall(packed_length)
             conn.sendall(data)
+            # data = UserInformation
     except Exception as e:
         print(f"failed at {function_name} {e}")
 

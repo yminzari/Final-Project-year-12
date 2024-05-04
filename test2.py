@@ -13,21 +13,21 @@ from Crypto.Cipher import PKCS1_OAEP
 from Crypto.Random import get_random_bytes
 
 
-def send_exit(exit_msg,aes_cipher):
-    send_data(client_socket, exit_msg, 1, "")
+def send_exit(exit_msg, aes_cipher):
+    send_data_encrypt(client_socket, exit_msg, 1, "", aes_cipher)
     sys.exit()
 
 
 def update_file(file_path, aes_cipher):
     print(file_path)
     req_dir = {"req": "update", "file_path": file_path}
-    send_data(client_socket, req_dir, 1, "")
+    send_data_encrypt(client_socket, req_dir, 1, "", aes_cipher)
     with open(file_path, "rb") as data:
         print(data)
         file = data.read()
-    send_data(client_socket, file, 2, file_path)
-    answer = recv_msg(client_socket)["msg"]
-    file_name = recv_msg(client_socket)["msg"]
+    send_data_encrypt(client_socket, file, 2, file_path, aes_cipher)
+    answer = recv_msg_encrypt(client_socket, aes_cipher)["msg"]
+    file_name = recv_msg_encrypt(client_socket,aes_cipher)["msg"]
     return answer, file_name
 
 
@@ -37,8 +37,8 @@ def download_file(file_path, download_path, aes_cipher):
         print("folder exist")
     else:
         os.mkdir(download_path)
-    send_data(client_socket, req_dir, 1, "")
-    file_msg = recv_msg(client_socket)
+    send_data_encrypt(client_socket, req_dir, 1, "", aes_cipher)
+    file_msg = recv_msg_encrypt(client_socket, aes_cipher)
     file_path_dict = file_msg.get("file_path").split("/")
     print(download_path + "/" + file_path_dict[-1])
     if os.path.exists(download_path + "/" + file_path_dict[-1]):
@@ -80,9 +80,9 @@ def add_file(aes_cipher):
         print(data)
         file = data.read()
     file_name = file_path[0].split("/")[-1]
-    send_data(client_socket, file, 2, file_path[0])
-    answer = recv_msg(client_socket)["msg"]
-    file_name = recv_msg(client_socket)["msg"]
+    send_data_encrypt(client_socket, file, 2, file_path[0], aes_cipher)
+    answer = recv_msg_encrypt(client_socket, aes_cipher)["msg"]
+    file_name = recv_msg_encrypt(client_socket, aes_cipher)["msg"]
     print(answer)
     return file_name, answer, file_path[0]
     # file_list.addItem(file_name)
@@ -134,8 +134,8 @@ def search_by_criteria(search, file_type, date, start_date, end_date,  exact_wor
             if start_date != "" and end_date != "":
                 ext_query += f" and (date_create between to_date('{start_date}','mm/dd/yyyy') and to_date('{end_date}','mm/dd/yyyy'))"
     req_dir = {"req": "ext_query", "ext_query": ext_query}
-    send_data(client_socket, req_dir, 1, "")
-    files = recv_msg(client_socket)
+    send_data_encrypt(client_socket, req_dir, 1, "", aes_cipher)
+    files = recv_msg_encrypt(client_socket, aes_cipher)
     return files["msg"]
 
 
@@ -165,10 +165,10 @@ def Enter(Username:PyQt5.QtWidgets.QLineEdit, FirstName:PyQt5.QtWidgets.QLineEdi
         else:
             RegisterOrLogIn = "1"
             UserInformation = {"Username": Username.text(), "Password": Password_LineEdit.text(), "FirstName": FirstName.text(), "LastName": LastName.text()}
-            send_data(client_socket, RegisterOrLogIn, 1, "")
+            send_data_encrypt(client_socket, RegisterOrLogIn, 1, "", aes_cipher)
             data = UserInformation
-            send_data(client_socket, data, 1, "")
-            data_recv = recv_msg(client_socket)
+            send_data_encrypt(client_socket, data, 1, "", aes_cipher)
+            data_recv = recv_msg_encrypt(client_socket, aes_cipher)
             print(data_recv["msg"])
             return data_recv["msg"]
     elif ClassName == "LogIn":
@@ -177,10 +177,11 @@ def Enter(Username:PyQt5.QtWidgets.QLineEdit, FirstName:PyQt5.QtWidgets.QLineEdi
         # send_data_encrypt(client_socket, "hello world", 1, "", aes_cipher)
         send_data_encrypt(client_socket, RegisterOrLogIn, 1, "", aes_cipher)
         data = UserInformation
-        send_data(client_socket, data, 1, "")
-        data_recv = recv_msg(client_socket)
+        send_data_encrypt(client_socket, data, 1, "", aes_cipher)
+        # data_recv = recv_msg(client_socket)
+        data_recv = recv_msg_encrypt(client_socket, aes_cipher)
         print("hej 4")
-        files = recv_msg(client_socket)["msg"]
+        files = recv_msg_encrypt(client_socket, aes_cipher)["msg"]
         print("hej 5")
         print(data_recv["msg"])
         return data_recv["msg"], files
@@ -230,11 +231,10 @@ def send_data_encrypt(conn, data, operation, file_to_send, aes_cipher):
             # print(os.path.getsize(file_to_send))
             data = protocol.create_file_header(data, file_to_send)
             # print(data)
+            data = aes_cipher.encrypt(data)
             length = len(data)
             # print(length)
             packed_length = struct.pack('>I', length)
-            packed_length = aes_cipher.encrypt(packed_length)
-            data = aes_cipher.encrypt(data)
             # Send the packed length over the socket
             # print(packed_length)
             conn.sendall(packed_length)
@@ -253,13 +253,20 @@ def recv_msg(conn):
 
 
 def recv_msg_encrypt(conn, aes_cipher):
-    data_size = protocol.recvall(conn, 4)
-    data_size = aes_cipher.decrypt(data_size)
-    length = struct.unpack('>I', data_size)[0]
-    data_recv = protocol.recvall(conn, length)
-    data_recv = aes_cipher.decrypt(data_recv)
-    data_recv = protocol.parse_header(data_recv)
-    return data_recv
+    try:
+        data_size = protocol.recvall(conn, 4)
+        length = struct.unpack('>I', data_size)[0]
+        print(length)
+        data_recv = protocol.recvall(conn, length)
+        data_recv = aes_cipher.decrypt(data_recv)
+        print(data_recv)
+        #   lengthdict = len(protocol.parse_header(data_recv))
+        data_recv = protocol.parse_header(data_recv)
+        print(data_recv)
+        return data_recv
+    except Exception as e:
+        print(e)
+
 
 
 def first_connection():
