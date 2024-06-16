@@ -11,6 +11,11 @@ class AESCipher:
         self.iv = iv
 
     def encrypt(self, message):
+        """
+        encrypts the message
+        :param message: the message
+        :return: an encrypted message
+        """
         try:
             aes_cipher = AES.new(self.key, AES.MODE_CFB, self.iv)
             padded_plaintext = pad(message, AES.block_size)
@@ -20,6 +25,11 @@ class AESCipher:
             print(e)
 
     def decrypt(self, encrypted_message):
+        """
+        decrypt the message
+        :param encrypted_message: encrypted message
+        :return: decrypted message
+        """
         try:
             aes_cipher = AES.new(self.key, AES.MODE_CFB, self.iv)
             decrypted_data = aes_cipher.decrypt(encrypted_message)
@@ -31,6 +41,12 @@ class AESCipher:
 
 
 def recvall(sock, size):
+    """
+    receive all the data
+    :param sock: socket
+    :param size: the size to receive
+    :return: the entire data
+    """
     data = b''
     while len(data) < size:
         remaining_size = size - len(data)
@@ -43,6 +59,11 @@ def recvall(sock, size):
 
 
 def create_string_header(msg):
+    """
+    creates a header for a string and then packs it with message pack
+    :param msg: massage
+    :return: packed message
+    """
     hdict = {"operation": "1",
              "length": str(len(msg)).zfill(8),
              "msg": msg
@@ -51,6 +72,12 @@ def create_string_header(msg):
 
 
 def create_file_header(msg, filepath):
+    """
+    creates a header for a file and then packs it with message pack
+    :param msg: message
+    :param filepath: file path
+    :return: packed message
+    """
     try:
         hdict = {"operation": "2",
                  "msg": msg,
@@ -63,6 +90,11 @@ def create_file_header(msg, filepath):
 
 
 def parse_header(mbin):
+    """
+    unpacks the message
+    :param mbin: packed message
+    :return: return unpacked message
+    """
     # Now, decode the accumulated_data
     hdict = msgpack.unpackb(mbin)
     return hdict

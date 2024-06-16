@@ -216,7 +216,7 @@ def ShowLogIn(CurrentWindow, aes_cipher):
 # Use callback very smart
 def Enter(Username:PyQt5.QtWidgets.QLineEdit, FirstName:PyQt5.QtWidgets.QLineEdit, LastName:PyQt5.QtWidgets.QLineEdit, Password_LineEdit:PyQt5.QtWidgets.QLineEdit, ConfirmPassword_LineEdit:PyQt5.QtWidgets.QLineEdit, ClassName, aes_cipher):
     """
-    sends to the server the information inputted by the client and if he tries to login or sign up
+    sends to the server the information inputted by the client and if he tries to login sign up
     :param Username: username
     :param FirstName: first name
     :param LastName: last name
@@ -292,7 +292,7 @@ def send_data(conn, data, operation, file_to_send):
 
 def send_data_encrypt(conn, data, operation, file_to_send, aes_cipher):
     """
-    encrypt the data and send it to the server
+    sends the data to the server but encrypted
     :param conn: client socket
     :param data: the data
     :param operation: the type of operation(file or string)
@@ -401,6 +401,10 @@ client_socket.connect((host, port))
 
 
 def main():
+    """
+    starts the first window
+    :return:
+    """
     global LogInOrRegister
     aes_cipher = first_connection()
     print(aes_cipher.iv)

@@ -34,8 +34,13 @@ socket_to_user_id = {}
 # Add encryption at DB level
 
 
-
 def handle_client(conn, client_address):
+    """
+    handles the client
+    :param conn: client socket
+    :param client_address: the adress of the client
+    :return:
+    """
     global function_name
     function_name = "handle_client"
     connectiondb = oracledb.connect(user="INFO_MANAGE", password="Henry123", host="localhost", port=1521,
@@ -113,6 +118,11 @@ def handle_client(conn, client_address):
 
 
 def first_connection(client_socket):
+    """
+    handles the sending of the public key and receives the iv and aes key
+    :param client_socket: client socket
+    :return: the cypher key
+    """
     key = RSA.generate(2048)
     public_key = key.public_key().export_key()
     private_key = key.export_key()
@@ -134,6 +144,14 @@ def first_connection(client_socket):
 
 
 def update_file(conn, cursor, connectiondb, aes_cipher):
+    """
+    updates a file in the database and memory, send back if it worked and the updated file list
+    :param conn: client socket
+    :param cursor: the cursor
+    :param connectiondb: database connection
+    :param aes_cipher: the cypher key
+    :return:
+    """
     file_msg = recv_msg_encrypt(conn, aes_cipher)
     print(file_msg["file_path"])
     try:
@@ -155,6 +173,8 @@ def update_file(conn, cursor, connectiondb, aes_cipher):
             for page in doc:
                 content += page.get_text()
             doc.close()
+        elif file_path_dict[-1].split(".")[-1] == "xlsx":
+            content = getExcelText(save_dirct + "/" + socket_to_username.get(conn) + "/" + file_path_dict[-1])
         print(content)
         cursor.execute("""UPDATE FILE_LIST_TBL
                         SET FILE_TEXT = :content
@@ -177,6 +197,16 @@ def update_file(conn, cursor, connectiondb, aes_cipher):
 
 
 def handle_files(conn, data, cursor, connectiondb, aes_cipher):
+    """
+    adds file sent by the client, checks if it already exists, if it does send to the client
+    if it doesn't, add to the database and write the file to the memory and send back the new list of files and a message
+    :param conn: client socket
+    :param data: the file
+    :param cursor: the cursor
+    :param connectiondb: the database connection
+    :param aes_cipher: the cypher key
+    :return:
+    """
     try:
         file_path_dict = data.get("file_path").split("/")
         print(file_path_dict[-1])
@@ -231,6 +261,14 @@ def handle_files(conn, data, cursor, connectiondb, aes_cipher):
 
 
 def send_files_by_criteria(criteria, cursor, conn, aes_cipher):
+    """
+    searches for the files by the criteria and sends to client that list
+    :param criteria: the criteria to search by
+    :param cursor: cursor
+    :param conn: client socket
+    :param aes_cipher: the cypher key
+    :return:
+    """
     try:
         query = f"""SELECT FL.FILE_PATH,to_char(FL.DATE_CREATE,'dd/mm/yyyy hh24:mi'),UT.USER_NAME from info_manage.file_list_tbl fl,
                                                 info_manage.USERS_TBL UT
@@ -246,6 +284,12 @@ def send_files_by_criteria(criteria, cursor, conn, aes_cipher):
 
 
 def recv_msg_encrypt(conn, aes_cipher):
+    """
+    receives encrypted data and decrypts it
+    :param conn: client socket
+    :param aes_cipher: the cypher key
+    :return: the data
+    """
     global function_name
     function_name = "recv_msg_encrypt"
     try:
@@ -264,8 +308,12 @@ def recv_msg_encrypt(conn, aes_cipher):
         return {"msg": "error"}
 
 
-
 def recv_msg(conn):
+    """
+    receives data
+    :param conn: client socket
+    :return: data
+    """
     global function_name
     function_name = "recv_msg"
     try:
@@ -294,6 +342,15 @@ def recv_msg(conn):
 
 # need to check if client does not already exist and username and password are ok if everything is good then return username True
 def handle_register(conn, cursor, connectiondb, aes_cipher):
+    """
+    handles the registration process, checks if the username is taken, checks if the password is valid
+    if any of thees are wrong returns an error message, else adds them to the database
+    :param conn: client socket
+    :param cursor: the cursor
+    :param connectiondb: the database connection
+    :param aes_cipher: the cypher key
+    :return: if it succeeded, if it did not the error message
+    """
     global function_name
     global socket_to_username
     global socket_to_user_id
@@ -344,6 +401,15 @@ def handle_register(conn, cursor, connectiondb, aes_cipher):
 
 # need to check if client is in the db
 def handle_login(conn, cursor, connectiondb, aes_cipher):
+    """
+    handles the login process, checks if the username exist, checks if the password is correct
+    if any of them are wrong return a message, else return true
+    :param conn: client socket
+    :param cursor: cursor
+    :param connectiondb: the database connection
+    :param aes_cipher: the cypher key
+    :return: if it was successful, if it wasn't the error message
+    """
     global function_name
     global socket_to_username
     global socket_to_user_id
@@ -434,6 +500,14 @@ from info_manage.users_tbl where user_name = :username""", (username, ))
 
 
 def send_data(conn, data, operation, file_to_send):
+    """
+    sends data
+    :param conn: client socket
+    :param data: data to send
+    :param operation: what it sends(file or string)
+    :param file_to_send: file path
+    :return:
+    """
     global function_name
     function_name = "send_data"
     try:
@@ -456,6 +530,15 @@ def send_data(conn, data, operation, file_to_send):
 
 
 def send_data_encrypt(conn, data, operation, file_to_send, aes_cipher):
+    """
+    encrypts the data and then sends it
+    :param conn: client socket
+    :param data: the data to send
+    :param operation: what it snends(file or string)
+    :param file_to_send: file path
+    :param aes_cipher: the cypher key
+    :return:
+    """
     global function_name
     function_name = "send_data"
     try:
@@ -489,6 +572,11 @@ def send_data_encrypt(conn, data, operation, file_to_send, aes_cipher):
 
 
 def is_valid_password(password):
+    """
+    checks if the password is valid
+    :param password: password
+    :return: if the password is valid
+    """
     # Check if password has at least 6 characters and a number
     global function_name
     function_name = "is_valid_password"
@@ -504,6 +592,11 @@ def is_valid_password(password):
 
 
 def is_valid_username(username):
+    """
+    checks if the username is valid
+    :param username: username
+    :return: if the username is valid
+    """
     # Check if password has at least 6 characters and a number
     global function_name
     function_name = "is_valid_username"
@@ -517,6 +610,11 @@ def is_valid_username(username):
 
 
 def getText(filename):
+    """
+    extract the text from docs
+    :param filename: the name of the file
+    :return: the text from the docs file
+    """
     doc = docx.Document(filename)
     fullText = []
     for para in doc.paragraphs:
@@ -525,6 +623,11 @@ def getText(filename):
 
 
 def getExcelText(filename):
+    """
+    extracts the the text from and excel file
+    :param filename: the name of the file
+    :return: the text from the file
+    """
     # Read the Excel file into a DataFrame
     excel_file = filename # Replace with your Excel file path
     df = pd.read_excel(excel_file)
@@ -549,6 +652,10 @@ function_name = ""
 
 
 def main():
+    """
+    runs the server and opens a thread for each client
+    :return:
+    """
     host = '0.0.0.0'
     port = 12345
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

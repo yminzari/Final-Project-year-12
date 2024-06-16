@@ -11,12 +11,35 @@ from PyQt5.QtCore import QDate
 class Ui_LogInOrRegister(object):
 
     def OpenLogInWindow(self, MainWindow, CallBackShowLogIn, aes_cipher):
+        """
+        opens the log in window
+        :param MainWindow: Main Window
+        :param CallBackShowLogIn: call back to the show log in function
+        :param aes_cipher: the cypher key
+        :return:
+        """
         CallBackShowLogIn(MainWindow, aes_cipher)
 
     def OpenRegistrtWindow(self, MainWindow, CallBackShowRegister, aes_cipher):
+        """
+        opens the register window
+        :param MainWindow: Main Window
+        :param CallBackShowRegister: call to the show register window function
+        :param aes_cipher: the cypher key
+        :return:
+        """
         CallBackShowRegister(MainWindow, aes_cipher)
 
     def setupUi(self, MainWindow, CallBackShowRegister, CallBackShowLogIn,exit_call_back, aes_cipher):
+        """
+        setups the ui
+        :param MainWindow: main window
+        :param CallBackShowRegister: call to the show register window function
+        :param CallBackShowLogIn: call back to the show log in function
+        :param exit_call_back: call back to the exit function
+        :param aes_cipher: the cypher key
+        :return:
+        """
         self.MainWindow = MainWindow
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(804, 609)
@@ -60,7 +83,7 @@ class Ui_LogInOrRegister(object):
 "}")
         self.RegisterButton.setObjectName("pushButton")
         self.label = QtWidgets.QLabel(self.centralwidget)
-        self.label.setGeometry(QtCore.QRect(150, 80, 571, 81))
+        self.label.setGeometry(QtCore.QRect(300, 80, 571, 81))
         font = QtGui.QFont()
         font.setPointSize(24)
         self.label.setFont(font)
@@ -78,6 +101,12 @@ class Ui_LogInOrRegister(object):
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def handle_exit(self, exit_call_back, aes_cipher):
+        """
+        call exit function
+        :param exit_call_back: call back of exit function
+        :param aes_cipher: the cypher key
+        :return:
+        """
         try:
             exit_call_back("exit", aes_cipher)
         except Exception as e:
@@ -91,11 +120,19 @@ class Ui_LogInOrRegister(object):
         MainWindow.setWindowTitle(_translate("MainWindow", "logInOrRegister"))
         self.LogInButton.setText(_translate("MainWindow", "Log In"))
         self.RegisterButton.setText(_translate("MainWindow", "Register"))
-        self.label.setText(_translate("MainWindow", "Välkommen till python-projekt"))
+        self.label.setText(_translate("MainWindow", "Fish The DOC"))
 
 
 class Ui_LogInWindow(object):
     def call_Enter(self, EnterCallBack, CallBackFileWindow, MainWindow, aes_cipher):
+        """
+        call the enter function
+        :param EnterCallBack: call back of the enter function
+        :param CallBackFileWindow: call back to the show file window function
+        :param MainWindow: main window
+        :param aes_cipher: the cypher key
+        :return:
+        """
         self.result, files = EnterCallBack(self.Username, "", "", self.Password_LineEdit, "", "LogIn", aes_cipher)
         if self.result != "connection succeed":
             msg_box = QMessageBox()
@@ -106,9 +143,26 @@ class Ui_LogInWindow(object):
             CallBackFileWindow(MainWindow, files, aes_cipher)
 
     def OpenRegistrtWindow(self, MainWindow, CallBackShowRegister, aes_cipher):
+        """
+        opens the register window
+        :param MainWindow: Main Window
+        :param CallBackShowRegister: call back to the show register function
+        :param aes_cipher: the cypher key
+        :return:
+        """
         CallBackShowRegister(MainWindow, aes_cipher)
 
     def setupUi(self, MainWindow, EnterCallBack, CallBackShowRegister, CallBackFileWindow, exit_call_back, aes_cipher):
+        """
+        sets up the ui for the log in window
+        :param MainWindow: main window
+        :param EnterCallBack: call back to enter function
+        :param CallBackShowRegister: call back to the show register window function
+        :param CallBackFileWindow: call back to the show file window function
+        :param exit_call_back: call back to the exit function
+        :param aes_cipher: the cypher key
+        :return:
+        """
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(711, 620)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
@@ -194,6 +248,10 @@ class Ui_LogInWindow(object):
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def toggle_visibility(self):
+        """
+        toggles the visibility of the password
+        :return:
+        """
         if self.Password_LineEdit.echoMode() == QLineEdit.Password:
             self.Password_LineEdit.setEchoMode(QLineEdit.Normal)
             self.toggle_button.setText("Hide Password")
@@ -223,6 +281,14 @@ class Ui_LogInWindow(object):
 
 class Ui_RegisterWindow(object):
     def call_Enter(self, EnterCallBack, CallBackFileWindow, MainWindow, aes_cipher):
+        """
+        calls the enter function
+        :param EnterCallBack: call back to the enter function
+        :param CallBackFileWindow: call back to the show file window funciton
+        :param MainWindow: main window
+        :param aes_cipher: the cypher key
+        :return:
+        """
         self.result = EnterCallBack(self.Username, self.FirstName, self.LastName, self.Password_LineEdit, self.ConfirmPassword_LineEdit, "Register", aes_cipher)
         if self.result != "connection succeed":
             msg_box = QMessageBox()
@@ -233,9 +299,26 @@ class Ui_RegisterWindow(object):
             CallBackFileWindow(MainWindow, [], aes_cipher)
 
     def OpenLogInWindow(self, MainWindow, CallBackShowLogIn, aes_cipher):
+        """
+        call the show log in window function
+        :param MainWindow: main window
+        :param CallBackShowLogIn: call back to the show log in window function
+        :param aes_cipher: the cypher key
+        :return:
+        """
         CallBackShowLogIn(MainWindow, aes_cipher)
 
     def setupUi(self, MainWindow, EnterCallBack, CallBackShowLogIn, CallBackFileWindow, exit_call_back, aes_cipher):
+        """
+        sets up the ui
+        :param MainWindow: Main window
+        :param EnterCallBack: call back to the enter function
+        :param CallBackShowLogIn: call back to the show log in window function
+        :param CallBackFileWindow: call back to the show file window function
+        :param exit_call_back: call back to the exit function
+        :param aes_cipher: the cypher key
+        :return:
+        """
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(1099, 845)
         MainWindow.setLayoutDirection(QtCore.Qt.LeftToRight)
@@ -379,6 +462,10 @@ class Ui_RegisterWindow(object):
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def toggle_visibility(self):
+        """
+        toggle the visibility of the password
+        :return:
+        """
         if self.ConfirmPassword_LineEdit.echoMode() == QLineEdit.Password:
             self.ConfirmPassword_LineEdit.setEchoMode(QLineEdit.Normal)
             self.Password_LineEdit.setEchoMode(QLineEdit.Normal)
@@ -389,6 +476,12 @@ class Ui_RegisterWindow(object):
             self.toggle_button.setText("Show Password")
 
     def handle_exit(self, exit_call_back, aes_cipher):
+        """
+        calls the exit function
+        :param exit_call_back: call back to the exit function
+        :param aes_cipher: the cypher key
+        :return:
+        """
         try:
             exit_call_back("exit", aes_cipher)
         except Exception as e:
@@ -574,6 +667,17 @@ class Ui_file_window(object):
         self.owner_label.setText(_translate("MainWindow", "Owner:"))
 class Ui_file_window_ver2(object):
     def setupUi_file_window(self, MainWindow, add_file_call_back, search_by_criteria, download_file, update_file_call_back, exit_call_back, aes_cipher):
+        """
+        sets up the ui
+        :param MainWindow: main window
+        :param add_file_call_back: call back to the add file function
+        :param search_by_criteria: call back to the search by criteria function
+        :param download_file: call back to the download file function
+        :param update_file_call_back: call back to the update file function
+        :param exit_call_back: call back to the exit function
+        :param aes_cipher: the cypher key
+        :return:
+        """
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(1124, 896)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
@@ -682,6 +786,12 @@ class Ui_file_window_ver2(object):
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def open_error_windows(self, error_msg, window_title):
+        """
+        opens a pop up window with an error message
+        :param error_msg: error message
+        :param window_title: the title of the window
+        :return:
+        """
         msg_box = QMessageBox()
         msg_box.setWindowTitle(window_title)
         msg_box.setText(error_msg)
@@ -689,12 +799,20 @@ class Ui_file_window_ver2(object):
         return
 
     def show_keyword_search_dialog(self):
+        """
+        shows the keyword search dialog
+        :return:
+        """
         self.keyword_search_dialog = KeywordSearchDialog(self.centralwidget)
         self.keyword_search_dialog.accepted.connect(self.handle_keyword_search)
         self.keyword_search_dialog.rejected.connect(self.init_KeywordSearchDialog)
         self.keyword_search_dialog.exec_()
 
     def handle_keyword_search(self):
+        """
+        handles the keyword search
+        :return:
+        """
         self.exact_word = self.keyword_search_dialog.exact_word_edit.text()
         self.wildcard_word = self.keyword_search_dialog.wildcard_word_edit.text()
         self.multi_words_and = [word.text() for word in self.keyword_search_dialog.multi_word_edits]
@@ -711,6 +829,13 @@ class Ui_file_window_ver2(object):
         # search_by_criteria(exact_word, wildcard_word, multi_words, ...)
 
     def show_context_menu(self, pos, download_file_func, aes_cipher):
+        """
+        shows the context menu
+        :param pos: the position picked
+        :param download_file_func: call back to the download file function
+        :param aes_cipher:the cypher key
+        :return:
+        """
         # Create a QMenu instance
         menu = QMenu(self.file_tabel)
 
@@ -725,6 +850,12 @@ class Ui_file_window_ver2(object):
         menu.exec_(self.file_tabel.mapToGlobal(pos))
 
     def download_selected_file(self, download_file_func, aes_cipher):
+        """
+        calls the download file function
+        :param download_file_func: call back to the download file function
+        :param aes_cipher: the cypher key
+        :return:
+        """
         selected_items = self.file_tabel.selectedItems()
         if selected_items:
             print("hej 2")
@@ -738,6 +869,12 @@ class Ui_file_window_ver2(object):
             os.startfile(self.download_dir)
 
     def download(self, download_file, aes_cipher):
+        """
+        calles the download file function
+        :param download_file: download file function
+        :param aes_cipher: the cypher key
+        :return:
+        """
         selected_items = self.file_tabel.selectedItems()
         if len(selected_items) > 0:
             selected_item = selected_items[0]
@@ -750,6 +887,10 @@ class Ui_file_window_ver2(object):
                 print("Selected item is not from the correct column.")
 
     def choose_download_dir(self):
+        """
+        lets you pick the download directory
+        :return:
+        """
         print(self.download_dir)
         self.download_dir = QFileDialog.getExistingDirectory(None, "pick a folder", os.path.expanduser("~"))
         self.download_dir_label.setText(f"downloading to: {self.download_dir}")
@@ -757,6 +898,12 @@ class Ui_file_window_ver2(object):
 
 
     def search(self, search_by_criteria, aes_cipher):
+        """
+        calls the search by criteria function
+        :param search_by_criteria: call back to the search by criteria function
+        :param aes_cipher: the cypher key
+        :return:
+        """
         search = self.search_file_line_edit.text()
         file_type = self.file_type_comboBox.currentText()
         date = self.edited_date_comboBox.currentText()
@@ -778,6 +925,10 @@ class Ui_file_window_ver2(object):
             self.add_file_to_list(item)
 
     def init_KeywordSearchDialog(self):
+        """
+        initialise the keyword search dialog
+        :return:
+        """
         self.search_keyword_Button.setText("Search by keywords")
         self.exact_word = ""
         self.wildcard_word = ""
@@ -785,6 +936,11 @@ class Ui_file_window_ver2(object):
         self.multi_words_and = []
 
     def handle_date_range_selection(self, index):
+        """
+        handle the date range selection
+        :param index: index
+        :return:
+        """
         if index == self.edited_date_comboBox.count() - 1:  # Check if the "custom date range" option is selected
             if self.custom_date_range_widget is None or not self.custom_date_range_widget.isVisible():
                 self.show_custom_date_range_dialog()
@@ -796,6 +952,10 @@ class Ui_file_window_ver2(object):
             self.selected_end_date = None
 
     def show_custom_date_range_dialog(self):
+        """
+        show custom date range dialog
+        :return:
+        """
         self.custom_date_range_dialog = QtWidgets.QDialog(self.centralwidget)
         self.custom_date_range_dialog.setWindowTitle("Select Custom Date Range")
         self.custom_date_range_dialog.setModal(True)
@@ -832,9 +992,19 @@ class Ui_file_window_ver2(object):
         self.custom_date_range_dialog.exec_()
 
     def hide_custom_date_range_dialog(self):
+        """
+        hides the custom date range dialog
+        :return:
+        """
         self.custom_date_range_dialog.hide()
 
     def handle_custom_date_range_confirmation(self, start_date_edit, end_date_edit):
+        """
+        handles the confirmation of the custom date picked
+        :param start_date_edit: start date picked
+        :param end_date_edit: end date picked
+        :return:
+        """
         start_date = start_date_edit.date()
         end_date = end_date_edit.date()
         if start_date > end_date:
@@ -852,6 +1022,13 @@ class Ui_file_window_ver2(object):
         self.hide_custom_date_range_dialog()
 
     def add_file(self, add_file_call_back, update_file_call_back, aes_cipher):
+        """
+        calls the add file function
+        :param add_file_call_back: call back to the add file function
+        :param update_file_call_back: call back to the update file function
+        :param aes_cipher: the cypher key
+        :return:
+        """
         self.file_name, answer, file_path = add_file_call_back(aes_cipher)
         if answer != "Saved File" and answer != "file already exists":
             self.open_error_windows(answer, "error")
@@ -877,6 +1054,11 @@ class Ui_file_window_ver2(object):
 
 
     def add_file_to_list(self, file):
+        """
+        adds the file to the list
+        :param file: file
+        :return:
+        """
         print(file)
         self.file_tabel.setRowCount(self.file_tabel.rowCount() + 1)
         column = 0
@@ -887,6 +1069,12 @@ class Ui_file_window_ver2(object):
             column += 1
 
     def handle_exit(self, exit_call_back, aes_cipher):
+        """
+        calls the exit function
+        :param exit_call_back: call back to the exit function
+        :param aes_cipher: the cypher key
+        :return:
+        """
         try:
             exit_call_back("exit", aes_cipher)
         except Exception as e:
@@ -974,6 +1162,11 @@ class KeywordSearchDialog(QDialog):
 
 
     def handle_text_changed(self, text):
+        """
+        handles the chang of the text
+        :param text: text
+        :return:
+        """
         sender = self.sender()
         in_group = False
 
