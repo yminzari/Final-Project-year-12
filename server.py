@@ -11,6 +11,7 @@ import fitz
 import pandas as pd
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
+import shutil
 
 
 socket_to_username = {}
@@ -111,6 +112,8 @@ def handle_client(conn, client_address):
                     update_file(conn, cursor, connectiondb, aes_cipher)
                 elif data["msg"]["req"] == "ext_query":
                     send_files_by_criteria(data["msg"]["ext_query"], cursor, conn, aes_cipher)
+                elif data["msg"]["req"] == "set_file_public":
+                    set_file_public(data["msg"]["file_path"], cursor, connectiondb, conn, aes_cipher)
             except Exception as e:
                 e = str(e)
                 print(e)
@@ -141,6 +144,44 @@ def first_connection(client_socket):
     print(f"Decrypted iv: {iv}")
     aes_cipher = protocol.AESCipher(aes_key, iv)
     return aes_cipher
+
+
+def set_file_public(file_name, cursor, connectiondb, conn, aes_cipher):
+    try:
+        username = socket_to_username.get(conn)
+        if os.path.exists("D:\\Yonatan\\INPUT_FILES_FOR_PROCESS\\Public_files"):
+            print("folder exist")
+        else:
+            os.mkdir("D:\\Yonatan\\INPUT_FILES_FOR_PROCESS\\Public_files")
+        file_path_dict = file_name.split("/")
+        public_file_path = "D:\\Yonatan\\INPUT_FILES_FOR_PROCESS\\Public_files" + "\\" + file_path_dict[-1]
+        public_file_path = public_file_path.replace("\\", "/")
+        print(public_file_path)
+        cursor.execute("SELECT COUNT(*) FROM FILE_LIST_TBL WHERE FILE_PATH = :file_path", file_path=public_file_path)
+        result = cursor.fetchone()[0]
+        print(result)
+        if result > 0:
+            send_data_encrypt(conn, "file already exists", 1, "", aes_cipher)
+            answer = recv_msg_encrypt(conn, aes_cipher)["msg"]
+            if answer == "dont Update":
+                return
+            elif answer == "Update":
+                cursor.execute("""DELETE FROM FILE_LIST_TBL WHERE FILE_PATH = :file_path""", file_path=public_file_path)
+                connectiondb.commit()
+        print(file_name)
+        print(username)
+        cursor.execute(f"""INSERT INTO FILE_LIST_TBL (FILE_PATH, FILE_TYPE, CREATE_BY, DATE_CREATE, UPDATE_BY, DATE_UPDATE, FILE_TEXT, IS_PUBLIC)
+                        (select replace(FILE_PATH,'{username}','Public_files'), FILE_TYPE, CREATE_BY, DATE_CREATE, UPDATE_BY, DATE_UPDATE, FILE_TEXT, 1
+                        from FILE_LIST_TBL where FILE_PATH = :file_path)""", file_path=file_name)
+        #cursor.execute("""UPDATE FILE_LIST_TBL
+        #SET IS_PUBLIC = 1
+        #WHERE FILE_PATH = :file_path
+        #""", file_path=(save_dirct + "/" + socket_to_username.get(conn) + "/" + file_path_dict[-1]))
+        connectiondb.commit()
+        shutil.copy2(file_name, "D:\\Yonatan\\INPUT_FILES_FOR_PROCESS\\Public_files")
+        send_data_encrypt(conn, "file was made public", 1, "", aes_cipher)
+    except Exception as e:
+        send_data_encrypt(conn, str(e), 1, "", aes_cipher)
 
 
 def update_file(conn, cursor, connectiondb, aes_cipher):
@@ -270,12 +311,21 @@ def send_files_by_criteria(criteria, cursor, conn, aes_cipher):
     :return:
     """
     try:
+        owner = recv_msg_encrypt(conn, aes_cipher)["msg"]
+        start_condition = " AND FL.CREATE_BY = :user_id"
+        if owner == "All":
+            start_condition = "AND (FL.CREATE_BY = :user_id OR FL.IS_PUBLIC = 1)"
+        elif owner == "Public":
+            start_condition = "AND FL.IS_PUBLIC = 1"
         query = f"""SELECT FL.FILE_PATH,to_char(FL.DATE_CREATE,'dd/mm/yyyy hh24:mi'),UT.USER_NAME from info_manage.file_list_tbl fl,
                                                 info_manage.USERS_TBL UT
-                                                where fl.create_by = ut.user_id AND FL.CREATE_BY = :user_id
+                                                where fl.create_by = ut.user_id {start_condition}
                                                 {criteria}"""
         print(query)
-        cursor.execute(query, (socket_to_user_id.get(conn),))
+        if owner == "Public":
+            cursor.execute(query)
+        else:
+            cursor.execute(query, (socket_to_user_id.get(conn),))
         files = cursor.fetchall()
         print(files)
         send_data_encrypt(conn, files, 1, "", aes_cipher)
@@ -365,6 +415,8 @@ def handle_register(conn, cursor, connectiondb, aes_cipher):
     print(hashed_pass)
     firstName = UserInformation.get("FirstName")
     lastName = UserInformation.get("LastName")
+    if username == "Public_files":
+        return False, "illegal username"
     if not is_valid_username(username):
         print("error invalid username")
         if not is_valid_password(password):

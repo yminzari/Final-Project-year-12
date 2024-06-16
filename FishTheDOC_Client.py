@@ -24,6 +24,13 @@ def send_exit(exit_msg, aes_cipher):
     sys.exit()
 
 
+def set_file_public(file_path, aes_cipher):
+    req_dir = {"req": "set_file_public", "file_path": file_path}
+    send_data_encrypt(client_socket, req_dir, 1, "", aes_cipher)
+    file_msg = recv_msg_encrypt(client_socket, aes_cipher)
+    return file_msg["msg"]
+
+
 def update_file(file_path, aes_cipher):
     """
     send the update request to server with the file to update
@@ -41,6 +48,15 @@ def update_file(file_path, aes_cipher):
     answer = recv_msg_encrypt(client_socket, aes_cipher)["msg"]
     file_name = recv_msg_encrypt(client_socket, aes_cipher)["msg"]
     return answer, file_name
+
+
+def update_public_file(aes_cipher, req):
+    if req != "update":
+        send_data_encrypt(client_socket, "dont Update", 1, "", aes_cipher)
+        return ""
+    send_data_encrypt(client_socket, "Update", 1, "", aes_cipher)
+    answer = recv_msg_encrypt(client_socket, aes_cipher)["msg"]
+    return answer
 
 
 def download_file(file_path, download_path, aes_cipher):
@@ -86,7 +102,7 @@ def ShowFileWindow(CurrentWindow, files, aes_cipher):
     print(files)
     file_window = QtWidgets.QMainWindow()
     FileWindow_ui = PyQ5_windows.Ui_file_window_ver2()
-    FileWindow_ui.setupUi_file_window(file_window, add_file, search_by_criteria, download_file, update_file, send_exit, aes_cipher)
+    FileWindow_ui.setupUi_file_window(file_window, add_file, search_by_criteria, download_file, update_file, send_exit, aes_cipher, set_file_public, update_public_file)
     try:
         if len(files) > 0:
             for file in files:
@@ -120,7 +136,7 @@ def add_file(aes_cipher):
     # file_list.addItem(file_name)
 
 
-def search_by_criteria(search, file_type, date, start_date, end_date,  exact_word, wildcard_word, and_words, or_words, aes_cipher):
+def search_by_criteria(search, file_type, date, start_date, end_date,  exact_word, wildcard_word, and_words, or_words, owner,aes_cipher):
     """
     sends to the server list of criteria to search files by
     :param search: file name
@@ -181,6 +197,7 @@ def search_by_criteria(search, file_type, date, start_date, end_date,  exact_wor
                 ext_query += f" and (date_create between to_date('{start_date}','mm/dd/yyyy') and to_date('{end_date}','mm/dd/yyyy'))"
     req_dir = {"req": "ext_query", "ext_query": ext_query}
     send_data_encrypt(client_socket, req_dir, 1, "", aes_cipher)
+    send_data_encrypt(client_socket, owner, 1, "", aes_cipher)
     files = recv_msg_encrypt(client_socket, aes_cipher)
     return files["msg"]
 

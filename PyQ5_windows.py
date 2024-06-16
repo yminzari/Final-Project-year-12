@@ -666,7 +666,7 @@ class Ui_file_window(object):
         self.file_type_label.setText(_translate("MainWindow", "File Type:"))
         self.owner_label.setText(_translate("MainWindow", "Owner:"))
 class Ui_file_window_ver2(object):
-    def setupUi_file_window(self, MainWindow, add_file_call_back, search_by_criteria, download_file, update_file_call_back, exit_call_back, aes_cipher):
+    def setupUi_file_window(self, MainWindow, add_file_call_back, search_by_criteria, download_file, update_file_call_back, exit_call_back, aes_cipher, set_public_file, update_public_file):
         """
         sets up the ui
         :param MainWindow: main window
@@ -692,7 +692,7 @@ class Ui_file_window_ver2(object):
         self.file_tabel.setColumnWidth(2, 200)
         self.file_tabel.setHorizontalHeaderLabels(["File Name", "Date Created", "File Owner"])
         self.file_tabel.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.file_tabel.customContextMenuRequested.connect(lambda pos: self.show_context_menu(pos, download_file, aes_cipher))
+        self.file_tabel.customContextMenuRequested.connect(lambda pos: self.show_context_menu(pos, download_file, aes_cipher, set_public_file, update_public_file))
         self.search_file_line_edit = QtWidgets.QLineEdit(self.centralwidget)
         self.search_file_line_edit.setGeometry(QtCore.QRect(140, 30, 981, 31))
         self.search_file_line_edit.setObjectName("search_file_line_edit")
@@ -754,6 +754,8 @@ class Ui_file_window_ver2(object):
         self.owner_comboBox = QtWidgets.QComboBox(self.centralwidget)
         self.owner_comboBox.setGeometry(QtCore.QRect(750, 90, 191, 31))
         self.owner_comboBox.setObjectName("owner_comboBox")
+        self.owner_comboBox.addItem("Current User")
+        self.owner_comboBox.addItem("Public")
         self.owner_comboBox.addItem("All")
         self.edit_date_label = QtWidgets.QLabel(self.centralwidget)
         self.edit_date_label.setGeometry(QtCore.QRect(340, 70, 171, 16))
@@ -828,7 +830,7 @@ class Ui_file_window_ver2(object):
         # Call the search_by_criteria function with the appropriate arguments
         # search_by_criteria(exact_word, wildcard_word, multi_words, ...)
 
-    def show_context_menu(self, pos, download_file_func, aes_cipher):
+    def show_context_menu(self, pos, download_file_func, aes_cipher, set_public_file, update_public_file):
         """
         shows the context menu
         :param pos: the position picked
@@ -842,12 +844,50 @@ class Ui_file_window_ver2(object):
         # Create a QAction for the "Download File" option
         download_action = QAction("Download File", self.file_tabel)
         download_action.triggered.connect(lambda: self.download_selected_file(download_file_func, aes_cipher))
+        set_public_action = QAction("Set Public", self.file_tabel)
+        set_public_action.triggered.connect(lambda: self.set_public_file(set_public_file, aes_cipher, update_public_file))
 
         # Add the action to the menu
         menu.addAction(download_action)
+        menu.addAction(set_public_action)
 
         # Show the context menu at the specified position
         menu.exec_(self.file_tabel.mapToGlobal(pos))
+
+    def set_public_file(self, set_public_file, aes_cipher, update_public_file):
+        """
+        Calls a function that makes a public copy of a selected file
+        :param set_public_file: the function being called
+        :param aes_cipher: the encryption key
+        :return:
+        """
+        selected_items = self.file_tabel.selectedItems()
+        if selected_items:
+            print("hej 2")
+            selected_item = selected_items[0]
+            row = selected_item.row()
+            file_name = self.file_tabel.item(row, 0).text()
+            answer = set_public_file(file_name, aes_cipher)
+            print(answer)
+            if answer == "file already exists":
+                msg_box = QMessageBox()
+                msg_box.setWindowTitle("Update or not")
+                msg_box.setText("file already exist would you like to update")
+                msg_box.setStandardButtons(QMessageBox.No | QMessageBox.Yes)
+                button = msg_box.exec_()
+                if button == QMessageBox.Yes:
+                    answer = update_public_file(aes_cipher, "update")
+                    if answer != "file was made public":
+                        self.open_error_windows(answer, "error")
+                        return
+                    else:
+                        self.open_error_windows("file was updated press search again to refresh","ok")
+                else:
+                    update_public_file(aes_cipher, "dont update")
+                    return
+            if answer != "file was made public":
+                self.open_error_windows(answer, "error")
+                return
 
     def download_selected_file(self, download_file_func, aes_cipher):
         """
@@ -907,6 +947,7 @@ class Ui_file_window_ver2(object):
         search = self.search_file_line_edit.text()
         file_type = self.file_type_comboBox.currentText()
         date = self.edited_date_comboBox.currentText()
+        owner = self.owner_comboBox.currentText()
         exact_word = self.exact_word
         wildcard_word = self.wildcard_word
         and_words = self.multi_words_and
@@ -917,7 +958,7 @@ class Ui_file_window_ver2(object):
         else:
             start_date = ""
             end_date = ""
-        files = search_by_criteria(search, file_type, date, start_date, end_date, exact_word, wildcard_word, and_words, or_words, aes_cipher)
+        files = search_by_criteria(search, file_type, date, start_date, end_date, exact_word, wildcard_word, and_words, or_words, owner, aes_cipher)
         self.init_KeywordSearchDialog()
         self.file_tabel.clearContents()
         self.file_tabel.setRowCount(0)
