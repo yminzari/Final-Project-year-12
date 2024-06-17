@@ -406,6 +406,8 @@ def first_connection():
 
 
 host = '127.0.0.1'
+#host = "157.90.143.110"
+#port = 5222
 port = 12345
 RegisterWindow = PyQ5_windows.Ui_RegisterWindow()
 LogInWindow = PyQ5_windows.Ui_LogInWindow()
