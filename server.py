@@ -223,9 +223,10 @@ def update_file(conn, cursor, connectiondb, aes_cipher):
                         ,UPDATE_BY = :update_by
                         WHERE FILE_PATH = :file_path """, content=content, file_path=(save_dirct + "/" + socket_to_username.get(conn) + "/" + file_path_dict[-1]), update_by=socket_to_user_id.get(conn))
         connectiondb.commit()
-        cursor.execute("""SELECT FL.FILE_PATH,to_char(FL.DATE_CREATE,'dd/mm/yyyy hh24:mi'),UT.USER_NAME from info_manage.file_list_tbl fl,
-                                                    info_manage.USERS_TBL UT
-                                                    where fl.create_by = ut.user_id AND FL.CREATE_BY = :user_id""",
+        cursor.execute("""SELECT FL.FILE_PATH,to_char(FL.DATE_CREATE,'dd/mm/yyyy hh24:mi'), to_char(FL.DATE_UPDATE,'dd/mm/yyyy hh24:mi'),UT.USER_NAME from info_manage.file_list_tbl fl,
+                                            info_manage.USERS_TBL UT
+                                            where fl.create_by = ut.user_id AND FL.CREATE_BY = :user_id
+                                            order by DATE_UPDATE desc""",
                        (socket_to_user_id.get(conn),))
         files = cursor.fetchall()
         send_data_encrypt(conn, "Updated", 1, "", aes_cipher)
@@ -266,9 +267,10 @@ def handle_files(conn, data, cursor, connectiondb, aes_cipher):
                             VALUES(:file_path,:file_type,:create_by,:update_by)"""
                            , ((save_dirct + "/" + socket_to_username.get(conn) + "/" + file_path_dict[-1]), file_path_dict[-1].split(".")[-1], socket_to_user_id.get(conn), socket_to_user_id.get(conn)))
             connectiondb.commit()
-            cursor.execute("""SELECT FL.FILE_PATH,to_char(FL.DATE_CREATE,'dd/mm/yyyy hh24:mi'),UT.USER_NAME from info_manage.file_list_tbl fl,
+            cursor.execute("""SELECT FL.FILE_PATH,to_char(FL.DATE_CREATE,'dd/mm/yyyy hh24:mi'), to_char(FL.DATE_UPDATE,'dd/mm/yyyy hh24:mi'),UT.USER_NAME from info_manage.file_list_tbl fl,
                                             info_manage.USERS_TBL UT
-                                            where fl.create_by = ut.user_id AND FL.CREATE_BY = :user_id""", (socket_to_user_id.get(conn),))
+                                            where fl.create_by = ut.user_id AND FL.CREATE_BY = :user_id
+                                            order by DATE_UPDATE desc""", (socket_to_user_id.get(conn),))
             files = cursor.fetchall()
         if file_path_dict[-1].split(".")[-1] == "txt":
             with open(save_dirct + "/" + socket_to_username.get(conn) + "/" + file_path_dict[-1], encoding='UTF-8') as file_ext:
@@ -312,15 +314,16 @@ def send_files_by_criteria(criteria, cursor, conn, aes_cipher):
     """
     try:
         owner = recv_msg_encrypt(conn, aes_cipher)["msg"]
-        start_condition = " AND FL.CREATE_BY = :user_id"
+        start_condition = " AND FL.CREATE_BY = :user_id AND FL.IS_PUBLIC = 0"
         if owner == "All":
             start_condition = "AND (FL.CREATE_BY = :user_id OR FL.IS_PUBLIC = 1)"
         elif owner == "Public":
             start_condition = "AND FL.IS_PUBLIC = 1"
-        query = f"""SELECT FL.FILE_PATH,to_char(FL.DATE_CREATE,'dd/mm/yyyy hh24:mi'),UT.USER_NAME from info_manage.file_list_tbl fl,
+        query = f"""SELECT FL.FILE_PATH,to_char(FL.DATE_CREATE,'dd/mm/yyyy hh24:mi'), to_char(FL.DATE_UPDATE,'dd/mm/yyyy hh24:mi'),UT.USER_NAME from info_manage.file_list_tbl fl,
                                                 info_manage.USERS_TBL UT
                                                 where fl.create_by = ut.user_id {start_condition}
-                                                {criteria}"""
+                                                {criteria}
+                                                order by DATE_UPDATE desc"""
         print(query)
         if owner == "Public":
             cursor.execute(query)
@@ -498,9 +501,10 @@ from info_manage.users_tbl where user_name = :username""", (username, ))
             else:
                 socket_to_username[conn] = username
                 socket_to_user_id[conn] = user_info[2]
-                cursor.execute("""SELECT FL.FILE_PATH,to_char(FL.DATE_CREATE,'dd/mm/yyyy hh24:mi'),UT.USER_NAME from info_manage.file_list_tbl fl,
+                cursor.execute("""SELECT FL.FILE_PATH,to_char(FL.DATE_CREATE,'dd/mm/yyyy hh24:mi'), to_char(FL.DATE_UPDATE,'dd/mm/yyyy hh24:mi'),UT.USER_NAME from info_manage.file_list_tbl fl,
                                                 info_manage.USERS_TBL UT
-                                                where fl.create_by = ut.user_id AND FL.CREATE_BY = :user_id""",
+                                                where fl.create_by = ut.user_id AND FL.CREATE_BY = :user_id
+                                                order by DATE_UPDATE desc""",
                                (user_info[2],))
                 files = cursor.fetchall()
                 print(cursor.fetchall())
