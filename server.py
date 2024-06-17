@@ -503,7 +503,7 @@ from info_manage.users_tbl where user_name = :username""", (username, ))
                 socket_to_user_id[conn] = user_info[2]
                 cursor.execute("""SELECT FL.FILE_PATH,to_char(FL.DATE_CREATE,'dd/mm/yyyy hh24:mi'), to_char(FL.DATE_UPDATE,'dd/mm/yyyy hh24:mi'),UT.USER_NAME from info_manage.file_list_tbl fl,
                                                 info_manage.USERS_TBL UT
-                                                where fl.create_by = ut.user_id AND FL.CREATE_BY = :user_id
+                                                where fl.create_by = ut.user_id AND FL.CREATE_BY = :user_id and FL.IS_PUBLIC = 0
                                                 order by DATE_UPDATE desc""",
                                (user_info[2],))
                 files = cursor.fetchall()

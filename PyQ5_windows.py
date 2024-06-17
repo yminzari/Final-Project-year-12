@@ -882,11 +882,14 @@ class Ui_file_window_ver2(object):
                         self.open_error_windows(answer, "error")
                         return
                     else:
-                        self.open_error_windows("file was updated press search again to refresh","ok")
+                        self.open_error_windows("file was updated press search with owner = All or Public", "ok")
                 else:
                     update_public_file(aes_cipher, "dont update")
                     return
-            if answer != "file was made public":
+            if answer == "file was made public":
+                self.open_error_windows("file was updated press search with owner = All or Public", "ok")
+                return
+            else:
                 self.open_error_windows(answer, "error")
                 return
 
